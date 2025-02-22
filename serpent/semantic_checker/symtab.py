@@ -1,5 +1,4 @@
 from __future__ import annotations
-from abc import ABC
 import copy
 from dataclasses import dataclass, field
 from typing import Iterable
@@ -7,7 +6,6 @@ from typing import Iterable
 from serpent.tree.class_decl import ClassDecl, GenericSpec
 from serpent.tree.type_decl import TypeDecl, ClassType, LikeCurrent, LikeFeature
 from serpent.tree.features import BaseMethod, Field, Constant, Method, Feature
-from serpent.tree.stmts import Statement
 from serpent.semantic_checker.analyze_inheritance import FlattenClass, FeatureRecord
 from serpent.errors import CompilerError
 
@@ -346,15 +344,6 @@ class LocalSymbolTable:
         return f"local_{name}"
 
 
-class GlobalClassTable:
-    
-    def __init__(self) -> None:
-        self.class_tables = []
-
-    def add_class_symbol_table(self, symtab: ClassSymbolTable) -> None:
-        self.class_tables.append(symtab)
-
-
 def make_local_symtab(
         method_name: str,
         method: BaseMethod,
@@ -413,28 +402,3 @@ def make_local_symtab(
 
     variables = bindings_of(method.local_var_decls, "variable")
     return LocalSymbolTable(method_name, parameters, variables, class_symtab)
-
-
-@dataclass
-class CodegenMethod:
-    local_table: LocalSymbolTable
-    return_type: Type
-    instructions: list[CodegenInstruction]
-
-
-@dataclass(frozen=True)
-class CodegenClass:
-    class_table: ClassSymbolTable
-    methods: list[CodegenMethod]
-    fields: list[CodegenField]
-    constants: list[CodegenConstant]
-
-
-def place_types_in_expr():
-    ...
-
-
-def type_check(
-        statements: list[Statement],
-        symtab: LocalSymbolTable) -> None:
-    ...

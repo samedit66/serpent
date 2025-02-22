@@ -6,7 +6,7 @@ from serpent.parser_adapter import parse
 from serpent.errors import *
 from serpent.semantic_checker.examine_system import examine_system
 from serpent.semantic_checker.analyze_inheritance import analyze_inheritance
-from serpent.semantic_checker.type_check import make_class_symtab, ClassHierarchy
+from serpent.semantic_checker.symtab import make_class_symtab, ClassHierarchy
 
 eiffel_code = """
 class ANY
