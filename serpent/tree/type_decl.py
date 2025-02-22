@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from .abstract_node import *
 
 
-class TypeDecl(Node, ABC):
-    pass
+@dataclass
+class TypeDecl(Node, ABC): pass
 
 
 @dataclass(match_args=True, kw_only=True)
@@ -83,6 +83,6 @@ def make_generic_type_decl(generic_decl_dict: dict) -> TypeDecl:
     ]
 
     if type_name == "TUPLE":
-        return TupleType(location=location, generics=generics)
+        return TupleType(location=location, name="TUPLE", generics=generics)
 
     return ClassType(location=location, name=type_name, generics=generics)

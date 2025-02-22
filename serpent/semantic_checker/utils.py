@@ -27,7 +27,7 @@ def show_feature_table(table: FlattenClass) -> str:
             if type_decl.name == "<VOID>":
                 return ""
             return type_decl.name
-        raise ValueError("Unsupported type declration")
+        raise ValueError(f"Unsupported type declration: {type_decl}")
 
     def format_feature(feature: FeatureRecord, indent_size: int = 4) -> str:
         indent = " " * indent_size

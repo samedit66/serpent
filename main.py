@@ -2,26 +2,41 @@ import json
 import sys
 
 from serpent.tree import make_ast
-from serpent.tree.abstract_node import Location
-#from backend.semantic_сhecker.stage0 import process_stage0
 from serpent.parser_adapter import parse
-#from backend.semantic_сhecker.stage1 import process_stage1
 from serpent.errors import *
+from serpent.semantic_checker.examine_system import examine_system
+from serpent.semantic_checker.analyze_inheritance import analyze_inheritance
+from serpent.semantic_checker.type_check import make_class_symtab, ClassHierarchy
 
-
-eiffel_code = """class A
+eiffel_code = """
+class ANY
 feature
-    f
-    do
-        {CLASS} Precursor (1, 2, 3)
-    end
+    default_create do end
+
+    out: STRING
+
+    to_string: like out
+
+    to_s: like to_string
+
+    twin: like Current
+end
+
+class ARRAY [G] feature item (i: INTEGER): G do end end
+
+class INTEGER feature f: ARRAY[INTEGER] do end end
+
+class STRING end
+
+class BASE
+inherit ANY redefine out end
+feature
+    b: like a
+    a: STRING
+    out: STRING
+    c: like b
 end
 """
-
-def pretty_ftable(ftable):
-    implicit = [f"{record.class_name}:{record.name}" for record in ftable.implicit]
-    features = [f"{record.class_name}:{record.name}" for record in ftable.features]
-    return f"[{" ".join(implicit)}]", f"[{" ".join(features)}]"
 
 
 json_ast, stderr = parse(eiffel_code, "build/eiffelp.exe")
@@ -34,6 +49,18 @@ dict_ast = json.loads(json_ast)
 ast = make_ast(dict_ast)
 
 error_collector = ErrorCollector()
+examine_system(ast, error_collector)
+if not error_collector.ok():
+    error_collector.show()
+    sys.exit(0)
 
-error_collector.add_error(CompilerError("what the fuck just happened?"))
-error_collector.show()
+flatten_classes = analyze_inheritance(ast, error_collector)
+if not error_collector.ok():
+    error_collector.show()
+    sys.exit(0)
+
+hierarchy = ClassHierarchy(ast)
+
+from serpent.tree.type_decl import ClassType
+symtab = make_class_symtab(ClassType(location=None, name="ARRAY", generics=[ClassType(location=None, name="INTEGER")]), flatten_classes[1], hierarchy)
+print(symtab)
