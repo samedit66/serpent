@@ -655,12 +655,12 @@ mk_create(char *type_name, Json *constructor_call);
 /**
  * Создает узел create-выражения
  * 
- * @param type_name Имя типа
+ * @param object_type Тип объекта
  * @param constructor_call Узел вызова конструктора
  * @return Узел create-выражения
  */
 Json*
-mk_create_expr(char *type_name, Json *constructor_call);
+mk_create_expr(Json *object_type, Json *constructor_call);
 
 /**
  * Создает узел параметра в определении метода

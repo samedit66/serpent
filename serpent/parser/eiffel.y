@@ -105,7 +105,7 @@
 
 %type <tree> manifest_tuple
 
-%type <tree> create_expr
+%type <tree> create_expr object_type
 
 %token
     INT_DIV "//"
@@ -656,10 +656,14 @@ manifest_array_content: expr { $$ = add_to_list(mk_list(), $1); }
 
 
 /* create-выражение */
-create_expr: CREATE '{' IDENT_LIT '}'                    { $$ = mk_create_expr($3, NULL); }
-           | CREATE '{' IDENT_LIT '}' '.' simple_call    { $$ = mk_create_expr($3, $6); }
-           | BANG_BANG '{' IDENT_LIT '}'                 { $$ = mk_create_expr($3, NULL); }
-           | BANG_BANG '{' IDENT_LIT '}' '.' simple_call { $$ = mk_create_expr($3, $6); }
+create_expr: CREATE '{' object_type '}'                    { $$ = mk_create_expr($3, NULL); }
+           | CREATE '{' object_type '}' '.' simple_call    { $$ = mk_create_expr($3, $6); }
+           | BANG_BANG '{' object_type '}'                 { $$ = mk_create_expr($3, NULL); }
+           | BANG_BANG '{' object_type '}' '.' simple_call { $$ = mk_create_expr($3, $6); }
+           ;
+
+object_type: IDENT_LIT { $$ = mk_type($1); }
+           | generic_type { $$ = $1; }
            ;
 
 

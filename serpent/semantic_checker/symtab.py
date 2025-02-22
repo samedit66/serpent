@@ -401,4 +401,10 @@ def make_local_symtab(
         return LocalSymbolTable(method_name, parameters, [], class_symtab)
 
     variables = bindings_of(method.local_var_decls, "variable")
+    assert isinstance(method.return_type, ClassType)
+    if method.return_type.name != "<VOID>":
+        result_type = class_symtab.type_of_feature(
+            class_symtab.mangle_name(method_name))
+        variables.append(("local_Result", result_type))
+
     return LocalSymbolTable(method_name, parameters, variables, class_symtab)

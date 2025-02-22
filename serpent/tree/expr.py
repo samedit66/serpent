@@ -3,6 +3,7 @@ from abc import ABC
 from dataclasses import dataclass, field
 
 from .abstract_node import *
+from serpent.tree.type_decl import ClassType, make_type_decl
 
 
 class Expr(Node, ABC):
@@ -75,7 +76,7 @@ class PrecursorCall(Expr):
 
 @dataclass(match_args=True, kw_only=True)
 class CreateExpr(Expr):
-    type_name: str
+    object_type: ClassType
     constructor_call: FeatureCall | None = None
 
 
@@ -203,13 +204,13 @@ class PowOp(BinaryFeature):
 class LtOp(BinaryFeature):
 
     def __init__(self, *, location: Location, left: Expr, right: Expr) -> None:
-        super().__init__(location, "<", "less", left, right)
+        super().__init__(location, "<", "is_less", left, right)
 
 
 class GtOp(BinaryFeature):
 
     def __init__(self, *, location: Location, left: Expr, right: Expr) -> None:
-        super().__init__(location, ">", "greater", left, right)
+        super().__init__(location, ">", "is_greater", left, right)
 
 
 class EqOp(BinaryFeature):
@@ -221,19 +222,19 @@ class EqOp(BinaryFeature):
 class NeqOp(BinaryFeature):
 
     def __init__(self, *, location: Location, left: Expr, right: Expr) -> None:
-        super().__init__(location, "/=", "not_equal", left, right)
+        super().__init__(location, "/=", "is_not_equal", left, right)
 
 
 class LeOp(BinaryFeature):
 
     def __init__(self, *, location: Location, left: Expr, right: Expr) -> None:
-        super().__init__(location, "<=", "less_equal", left, right)
+        super().__init__(location, "<=", "is_less_equal", left, right)
 
 
 class GeOp(BinaryFeature):
 
     def __init__(self, *, location: Location, left: Expr, right: Expr) -> None:
-        super().__init__(location, ">=", "greater_equal", left, right)
+        super().__init__(location, ">=", "is_greater_equal", left, right)
 
 
 class AndOp(BinaryOp):
@@ -390,13 +391,21 @@ def make_if_expr(if_expr_dict: dict) -> IfExpr:
     )
 
 
+def make_constructor_call(constructor_call: dict) -> FeatureCall:
+    return FeatureCall(
+        location=None,
+        feature_name=constructor_call["name"],
+        arguments=[
+            make_expr(arg) for arg in constructor_call["args_list"]],)
+
+
 def make_create_expr(create_expr_dict: dict) -> CreateExpr:
     return CreateExpr(
         location=Location(
             **create_expr_dict["location"]),
-        type_name=create_expr_dict["type_name"],
+        object_type=make_type_decl(create_expr_dict["object_type"]),
         constructor_call=(
-            make_feature_call(
+            make_constructor_call(
                 create_expr_dict["constructor_call"]) if create_expr_dict["constructor_call"] else None),
     )
 

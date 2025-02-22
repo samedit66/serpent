@@ -615,11 +615,11 @@ mk_create(char *type_name, Json *constructor_call) {
 }
 
 Json*
-mk_create_expr(char *type_name, Json *constructor_call) {
+mk_create_expr(Json *object_type, Json *constructor_call) {
     Json *create_expr = Json_new();
 
     add_type_to_node(create_expr, "create_expr");
-    Json_add_string_to_object(create_expr, "type_name", type_name);
+    Json_add_object_to_object(create_expr, "object_type", object_type);
     Json_add_object_to_object(create_expr, "constructor_call", constructor_call);
 
     return create_expr;
