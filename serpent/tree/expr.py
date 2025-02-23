@@ -147,6 +147,12 @@ class UnaryFeature(UnaryOp, FeatureCall):
         self.symbol_name = symbol_name
 
 
+class BracketAccess(BinaryFeature):
+
+    def __init__(self, *, location: Location, left: Expr, right: Expr) -> None:
+        super().__init__(location, "[]", "item", left, right)
+
+
 class AddOp(BinaryFeature):
 
     def __init__(self, *, location: Location, left: Expr, right: Expr) -> None:
@@ -360,17 +366,10 @@ def make_precursor_call(precursor_call_dict: dict) -> PrecursorCall:
 
 
 def make_bracket_access(bracket_access_dict: dict) -> BracketAccess:
-    indices = []
-    source = bracket_access_dict
-
-    while source["type"] == "bracket_access":
-        indices.append(make_expr(source["index"]))
-        source = source["source"]
-
     return BracketAccess(
         location=Location(**bracket_access_dict["location"]),
-        indexed_expr=make_expr(source),
-        indices=indices,
+        left=make_expr(bracket_access_dict["source"]),
+        indices=make_expr(bracket_access_dict["index"]),
     )
 
 
