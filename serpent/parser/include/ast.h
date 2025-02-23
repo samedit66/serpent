@@ -646,11 +646,12 @@ mk_manifest_tuple(Json *manifest_tuple_content);
 /**
  * Создает узел create-оператора
  * 
+ * @param object_type Тип объекта
  * @param constructor_call Узел вызова конструктора
  * @return Узел create-оператора 
  */
 Json*
-mk_create(char *type_name, Json *constructor_call);
+mk_create(Json *object_type, Json *constructor_call);
 
 /**
  * Создает узел create-выражения

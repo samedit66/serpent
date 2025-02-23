@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from .abstract_node import *
 from .expr import Expr, FeatureCall, PrecursorCall, make_expr, make_feature_call, make_precursor_call
+from serpent.tree.type_decl import ClassType, make_type_decl
 
 
 class Statement(Node, ABC):
@@ -19,7 +20,7 @@ class Assignment(Statement):
 @dataclass(match_args=True, kw_only=True)
 class CreateStmt(Statement):
     constructor_call: FeatureCall
-    type_name: str | None
+    type_name: ClassType | None
 
 
 @dataclass(match_args=True, kw_only=True)
@@ -114,7 +115,9 @@ def make_create_stmt(create_stmt_dict: dict) -> CreateStmt:
         location=Location(**create_stmt_dict["location"]),
         constructor_call=make_constructor_call(
             create_stmt_dict["constructor_call"]),
-        type_name=create_stmt_dict["type_name"],
+        object_type=(
+            make_type_decl(create_stmt_dict["object_type"])
+            if create_stmt_dict["object_type"] is not None else None),
     )
 
 

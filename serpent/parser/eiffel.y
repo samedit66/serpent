@@ -485,9 +485,9 @@ stmt: assign_stmt  { $$ = $1; }
 /* ********************************************************************/
 /* Оператор создание объекта */
 create_stmt: CREATE constructor_call                      { $$ = mk_create(NULL, $2); }
-           | CREATE '{' IDENT_LIT '}' constructor_call    { $$ = mk_create($3, $5); }
+           | CREATE '{' object_type '}' constructor_call    { $$ = mk_create($3, $5); }
            | BANG_BANG constructor_call                   { $$ = mk_create(NULL, $2); }
-           | BANG_BANG '{' IDENT_LIT '}' constructor_call { $$ = mk_create($3, $5); }
+           | BANG_BANG '{' object_type '}' constructor_call { $$ = mk_create($3, $5); }
            ;
 
 constructor_call: IDENT_LIT                  { $$ = mk_constructor_call($1, NULL); }
