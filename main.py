@@ -22,7 +22,15 @@ feature
     twin: like Current
 end
 
-class ARRAY [G] feature item (i: INTEGER): G do end end
+class ARRAY [G]
+feature
+    item (i: INTEGER): G do end
+
+    test
+    do
+        x := create {ARRAY[INTEGER]}.default_create
+    end
+end
 
 class INTEGER feature f: ARRAY[INTEGER] do end end
 

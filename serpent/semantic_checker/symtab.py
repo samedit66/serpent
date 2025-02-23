@@ -130,6 +130,9 @@ class ClassSymbolTable:
     """Отображение имени шаблонного параметра в конкретный тип
     (если у класса есть дженерики)"""
 
+    feature_signatures_map: dict[str, list[tuple[str, Type]]]
+    """Отображение имени фичи в ее сигнатуру"""
+
     def has_feature(self, feature_name: str, self_called: bool = False) -> bool:
         """Проверяет наличие заданной фичи в классе. Список фич
         отличается в зависимости от того, кому необходимо узнать наличие фичи:
@@ -181,6 +184,10 @@ class ClassSymbolTable:
         """Возвращает тип для заданной фичи"""
         assert self.has_feature(feature_name, self_called)
         return self.feature_value_type_map[feature_name]
+    
+    def add_feature_signature(self, feature_name: str, parameters: list[tuple[str, Type]]) -> None:
+        assert not self.has_feature(feature_name)
+        self.feature_signatures_map[feature_name] = parameters
 
 
 def check_generics(actuals, generic, hierarchy) -> None:
@@ -330,7 +337,8 @@ def make_class_symtab(
         feature_node_map=feature_node_map,
         constructors=constructors,
         class_interface=class_interface,
-        generic_map=generic_map)
+        generic_map=generic_map,
+        feature_signatures_map={})
 
 
 @dataclass(frozen=True)
@@ -338,8 +346,16 @@ class LocalSymbolTable:
     method_name: str
     parameters: list[tuple[str, Type]]
     variables: list[tuple[str, Type]]
+    all_locals: dict[str, Type]
     class_symtab: ClassSymbolTable
 
+    def has_local(self, local_name: str) -> bool:
+        return local_name in self.variables or local_name in self.parameters
+
+    def type_of(self, local_name: str) -> bool:
+        assert self.has_local(local_name)
+        return self.all_locals[local_name]
+        
     def mangle_name(self, name: str) -> str:
         return f"local_{name}"
 
@@ -362,6 +378,12 @@ def make_local_symtab(
                 raise CompilerError(
                     f"{local_type_name.capitalize()} '{name}' conflicts with feature '{name}' of class '{class_symtab.type_of.name}'",
                     location=method.location)
+
+            mangled_name = f"local_{name}"
+            if any(b[0] == mangled_name for b in bindings):
+                raise CompilerError(
+                    f"{local_type_name.capitalize()} '{name} already defined"
+                )
 
             if isinstance(param_type_decl, ClassType):
                 type_name = param_type_decl.name
@@ -391,14 +413,14 @@ def make_local_symtab(
                 param_type = feature_type
             else: assert False
 
-            mangled_name = f"local_{name}"
             bindings.append((mangled_name, param_type))
         
         return bindings
         
     parameters = bindings_of(method.parameters, "parameter")
     if not isinstance(method, Method):
-        return LocalSymbolTable(method_name, parameters, [], class_symtab)
+        return LocalSymbolTable(
+            method_name, parameters, [], dict(parameters), class_symtab)
 
     variables = bindings_of(method.local_var_decls, "variable")
     assert isinstance(method.return_type, ClassType)
@@ -407,4 +429,21 @@ def make_local_symtab(
             class_symtab.mangle_name(method_name))
         variables.append(("local_Result", result_type))
 
-    return LocalSymbolTable(method_name, parameters, variables, class_symtab)
+    return LocalSymbolTable(
+        method_name, parameters, variables, dict(parameters + variables), class_symtab)
+
+
+class GlobalClassTable:
+    
+    def __init__(self) -> None:
+        self.classes = []
+
+    def add_class_table(self, class_symtab: ClassSymbolTable) -> None:
+        self.classes.append(class_symtab)
+
+    def has_class_table(self, full_name: str) -> bool:
+        return any(c.type_of.full_name == full_name for c in self.classes)
+
+    def get_class_table(self, full_name: str) -> ClassSymbolTable:
+        assert self.has_class_table(full_name)
+        return next(c for c in self.classes if c.full_name == full_name)

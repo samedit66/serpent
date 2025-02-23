@@ -2,6 +2,11 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
+class CONSTANT:
+    index: int
+
+
+@dataclass(frozen=True)
 class CONSTANT_Utf8:
     text: str
 
@@ -18,31 +23,31 @@ class CONSTANT_Float:
 
 @dataclass(frozen=True)
 class CONSTANT_String:
-    const_utf8: int
+    string_index: int
 
 
 @dataclass(frozen=True)
 class CONSTANT_NameAndType:
-    name_const: int
-    type_const: int
+    name_const_index: int
+    type_const_index: int
 
 
 @dataclass(frozen=True)
 class CONSTANT_Class:
-    name_const: int
+    name_index: int
 
 
 @dataclass(frozen=True)
 class CONSTANT_Fieldref:
-    class_const: int
-    name_and_type_const: int
+    class_index: int
+    name_and_type_index: int
 
 
 @dataclass(frozen=True)
 class CONSTANT_Methodref:
-    class_const: int
-    name_and_type_const: int
+    class_index: int
+    name_and_type_index: int
 
 
 class ConstantPool:
-    ...
+    pass
