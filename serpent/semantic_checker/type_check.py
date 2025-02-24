@@ -926,6 +926,11 @@ def make_codegen_class(flatten_cls: FlattenClass,
                        global_class_table: GlobalClassTable,
                        flatten_class_mapping: dict[str, FlattenClass],
                        actual_type: ClassType | None = None) -> TClass:
+    # Дикий костыль, необходимый для того, чтобы при любом тексте в
+    # в классе NONE отбрасывать все методы и поля
+    if flatten_cls.class_name == "NONE":
+        return TClass(class_name="NONE", methods=[], fields=[])    
+
     if flatten_cls.class_decl.generics and actual_type is None:
         assert False, f"Class '{flatten_cls.class_name}' is generic, actual type not provided"
 
