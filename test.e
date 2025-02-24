@@ -1,9 +1,18 @@
-class A
-
+class INTEGER
+inherit ANY
+    redefine out end
 feature
-    f (a, b: ARRAY) 
+    out: STRING do print (10) end
+feature
+    plus (other: like Current): like Current do end
+feature
+    test
     local
-        c: like a
+        x: STRING
+        y: INTEGER
+        z: BASE
     do
+        x := ""
+        z := create {BASE}
     end
 end

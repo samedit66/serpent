@@ -5,7 +5,7 @@ from typing import Iterable
 
 from serpent.tree.class_decl import ClassDecl, GenericSpec
 from serpent.tree.type_decl import TypeDecl, ClassType, LikeCurrent, LikeFeature
-from serpent.tree.features import BaseMethod, Field, Constant, Method, Feature
+from serpent.tree.features import BaseMethod, Field, Constant, Method, ExternalMethod, Feature, Parameter, LocalVarDecl
 from serpent.semantic_checker.analyze_inheritance import FlattenClass, FeatureRecord
 from serpent.errors import CompilerError
 
@@ -25,6 +25,8 @@ class ClassHierarchy:
     def conforms_to(self, child_name: str, parent_name: str) -> bool:
         if child_name == "NONE":
             return True
+        if child_name == parent_name:
+            return True
 
         assert child_name in self.hierarchy
         parents = self.hierarchy[child_name]
@@ -32,7 +34,7 @@ class ClassHierarchy:
             return False
 
         return (parent_name in parents
-                or any(self.conforms_to(child_name, p) for p in parents))
+                or any(self.conforms_to(p, parent_name) for p in parents))
 
 
 @dataclass(frozen=True)
@@ -49,13 +51,14 @@ class Type:
         return self.name == other.name and self.generics == other.generics
 
     def __repr__(self) -> str:
+        return self.full_name
+
+    @property
+    def full_name(self) -> str:
         if self.generics:
             generics_str = ",".join(map(str, self.generics))
             return f"{self.name}[{generics_str}]"
         return self.name
-
-    def full_name(self) -> str:
-        return repr(self)
 
     def conforms_to(self, other: Type, hierarchy: ClassHierarchy) -> bool:
         # Специальный случай: тип NONE всегда соответствует
@@ -92,8 +95,15 @@ def type_of_class_decl_type(type_decl: ClassType) -> Type:
     for generic_decl in type_decl.generics:
         if not isinstance(generic_decl, ClassType):
             raise CompilerError(
-                    "Generic type declarations must be concrete types, not generics",
-                    generic_decl.location)
+                "Generic type declarations must be concrete types, not generics",
+                generic_decl.location)
+        
+        type_of = type_of_class_decl_type(generic_decl)
+        if type_of.name == "NONE":
+            raise CompilerError(
+                f"It is not allowed to annotate objects with type of 'NONE' class",
+                generic_decl.location)
+
         generics.append(type_of_class_decl_type(generic_decl))
     return Type(name=type_decl.name, generics=generics)
 
@@ -105,7 +115,7 @@ class ClassSymbolTable:
 
     is_deferred: bool
     """Является ли класс отложенными (абстрактным)"""
-    
+
     feature_clients_map: dict[str, list[Type]]
     """Отображение имени фичи в список клиентов, которые могут её вызвать"""
 
@@ -133,7 +143,21 @@ class ClassSymbolTable:
     feature_signatures_map: dict[str, list[tuple[str, Type]]]
     """Отображение имени фичи в ее сигнатуру"""
 
-    def has_feature(self, feature_name: str, self_called: bool = False) -> bool:
+    variables: dict[str, list[tuple[str, Type]]]
+    """Отображение имени фичи в таблицу локальных переменных фичи"""
+
+    @property
+    def full_type_name(self) -> str:
+        return self.type_of.full_name
+
+    @property
+    def short_type_name(self) -> str:
+        return self.type_of.name
+
+    def has_feature(
+            self,
+            feature_name: str,
+            self_called: bool = False) -> bool:
         """Проверяет наличие заданной фичи в классе. Список фич
         отличается в зависимости от того, кому необходимо узнать наличие фичи:
         в случае, если происходит вызов метода без указания объекта, у которого он
@@ -145,14 +169,18 @@ class ClassSymbolTable:
             return feature_name in self.feature_node_map
         return feature_name in self.class_interface
 
-    def can_be_called(self, feature_name: str, caller_type: Type | None = None) -> bool:
+    def can_be_called(
+            self,
+            feature_name: str,
+            hierarchy: ClassHierarchy,
+            caller_type: Type | None = None) -> bool:
         """Проверяет, может ли заданная фича быть вызванной у объекта
         с учетом того, какой класс вызывает этот метод
         """
         assert self.has_feature(feature_name) \
             or (caller_type is None and feature_name in self.feature_node_map)
         clients = self.feature_clients_map[feature_name]
-        return any(caller_type.conforms_to(client) for client in clients)
+        return any(caller_type.conforms_to(client, hierarchy) for client in clients)
 
     def is_field(self, feature_name: str, self_called: bool = False) -> bool:
         """Проверяет, является ли заданная фича полем класса"""
@@ -160,7 +188,10 @@ class ClassSymbolTable:
         feature = self.feature_node_map[feature_name]
         return isinstance(feature, Field)
 
-    def is_constant(self, feature_name: str, self_called: bool = False) -> bool:
+    def is_constant(
+            self,
+            feature_name: str,
+            self_called: bool = False) -> bool:
         """Проверяет, является ли заданная фича константой"""
         assert self.has_feature(feature_name, self_called)
         feature = self.feature_node_map[feature_name]
@@ -176,22 +207,43 @@ class ClassSymbolTable:
         """Проверяет, является ли заданная фича конструктором"""
         return feature_name in self.constructors
 
-    def mangle_name(self, name: str) -> str:
-        """Выполняет манглирование имени с учетом имени класса"""
-        return f"{self.type_of.name}_{name}"
-
-    def type_of_feature(self, feature_name: str, self_called: bool = False) -> Type:
+    def type_of_feature(
+            self,
+            feature_name: str,
+            self_called: bool = False) -> Type:
         """Возвращает тип для заданной фичи"""
         assert self.has_feature(feature_name, self_called)
         return self.feature_value_type_map[feature_name]
+
+    def get_feature_signature(
+            self, feature_name: str) -> list[tuple[str, Type]]:
+        assert feature_name in self.feature_signatures_map
+        return self.feature_signatures_map[feature_name]
+
+    def get_feature_node(self, feature_name: str) -> Feature:
+        assert feature_name in self.feature_signatures_map
+        return self.feature_node_map[feature_name]
     
-    def add_feature_signature(self, feature_name: str, parameters: list[tuple[str, Type]]) -> None:
-        assert not self.has_feature(feature_name)
-        self.feature_signatures_map[feature_name] = parameters
+    def has_local(self, feature_name: str, local_name: str) -> bool:
+        assert self.has_feature(feature_name, self_called=True)
+        parameters = self.feature_signatures_map[feature_name]
+        variables = self.variables[feature_name]
+        return any(local_name == name for name, _ in parameters + variables)
+
+    def type_of_local(self, feature_name: str, local_name: str) -> Type:
+        assert self.has_local(feature_name, local_name)
+        parameters = self.feature_signatures_map[feature_name]
+        variables = self.variables[feature_name]
+        all_locals = parameters + variables
+        return next(t for (n, t) in all_locals if n == local_name)
+    
+    def get_variables(self, feature_name: str) -> Type:
+        assert self.has_feature(feature_name, self_called=True)
+        return self.variables[feature_name]
 
 
 def check_generics(actuals, generic, hierarchy) -> None:
-    ...
+    print("symtab.py: check_generics does not do anything meaningful")
 
 
 def make_generic_map(
@@ -208,7 +260,7 @@ def make_generic_map(
     generic_map = {
         name: actual
         for name, actual in zip(template_names, actuals)}
-    
+
     return generic_map
 
 
@@ -229,73 +281,137 @@ def features_of_flatten_class(
 
     explicit = precursors + inherited + own
     implicit = [
-        feature
-        for feature in (
+        copy.replace(f, name=f"{f.from_class}_{f.name}")
+        for f in (
             flatten_cls.renamed
             + flatten_cls.redefined
             + flatten_cls.undefined
-            + flatten_cls.selected)
+            + flatten_cls.selected
+            + flatten_cls.inherited)
     ]
 
     return explicit, implicit
 
 
-def check_clients_existence(feature: FeatureRecord, hierarchy: ClassHierarchy) -> None:
+def constructors_of(flatten_cls: FlattenClass) -> list[str]:
+    return [f"{f.from_class}_{f.name}" for f in flatten_cls.constructors]
+
+
+def check_clients_existence(
+        feature: FeatureRecord,
+        hierarchy: ClassHierarchy) -> None:
     for client in feature.node.clients:
         if client not in hierarchy:
             raise CompilerError(
-                    f"Client class '{client}' of feature '{feature.name}' does not exist",
-                    location=feature.location)
+                f"Client class '{client}' of feature '{
+                    feature.name}' does not exist",
+                location=feature.location)
 
+
+def mangle_name(
+        feature_name: str,
+        class_name: str | None = None,
+        is_precursor: bool = False) -> str:
+    if class_name is not None:
+        base = f"{class_name}_{feature_name}"
+        return f"Precursor_{base}_{feature_name}" if is_precursor else base
+    return f"local_{feature_name}"
+
+
+def unmangle_name(
+        mangled_name: str,
+        is_local: bool = False) -> str:
+    if is_local:
+        prefix = "local_"
+        return mangled_name[len(prefix):]
+    precursor_prefix = "Precursor_"
+    if mangled_name.startswith(precursor_prefix):
+        mangled_name = mangled_name[len(precursor_prefix) + 1:]
+    class_index = mangled_name.index("_") + 1
+    return mangled_name[class_index:]
+
+
+def class_name_of_mangled_name(mangled_name: str) -> str:
+    precursor_prefix = "Precursor_"
+    if mangled_name.startswith(precursor_prefix):
+        mangled_name = mangled_name[len(precursor_prefix) + 1:]
+    class_index = mangled_name.index("_")
+    return mangled_name[:class_index]
+
+
+def guess_type(
+        type_decl: TypeDecl,
+        class_decl_type: ClassDecl,
+        feature_value_type_map: dict[str, Type],
+        hierarchy: ClassHierarchy) -> Type:
+    """Определяет тип параметра или локальной переменной"""
+    match type_decl:
+        case ClassType(location=location, name=name):
+            if name not in hierarchy:
+                raise CompilerError(f"Unknown type '{name}'", location=location)
+            return type_of_class_decl_type(type_decl)
+        case LikeCurrent(location=location):
+            return type_of_class_decl_type(class_decl_type)
+        case LikeFeature(location=location, feature_name=feature_name):
+            mangled_name = mangle_name(feature_name, class_name=class_decl_type.class_name)
+            if mangled_name not in feature_value_type_map:
+                raise CompilerError(f"Unknown feature '{feature_name}'")
+            return feature_value_type_map[mangled_name]
+        case _: assert False, f"Got unexpected TypeDecl: {type_decl}"
+        
 
 def make_class_symtab(
-        class_type_decl: ClassType,
+        actuals: ClassType,
         flatten_cls: FlattenClass,
         hierarchy: ClassHierarchy) -> ClassSymbolTable:
     # Необходимо вставить код проверки корректности дженериков
     # 1. Совпадают по количеству
     # 2. conforms_to
+    check_generics(actuals.generics, flatten_cls.class_decl.generics, hierarchy)
     generic_map = make_generic_map(
-        class_type_decl.generics, flatten_cls.class_decl.generics)
-    
+        actuals.generics, flatten_cls.class_decl.generics)
+
     # Получаем два списка фич:
     # explicit - фичи, которые доступны для вызова непосредственно
     # у объекта class_type_decl
     # implicit - фичи, которые неявно должны быть у класса,
     # для того чтобы он корректно работал (precursors, renamed, ...)
     explicit, implicit = features_of_flatten_class(flatten_cls)
-
+    constructors = constructors_of(flatten_cls)
     class_interface = [feature.name for feature in explicit]
     feature_clients_map = {}
     feature_value_type_map = {}
     feature_node_map = {}
-    class_type = type_of_class_decl_type(class_type_decl)
-    constructors = [feature.name for feature in flatten_cls.constructors]
+    class_type = type_of_class_decl_type(actuals)
 
     like_anchored = []
     for feature in explicit + implicit:
-        assert feature.name not in feature_node_map
+        assert feature.name not in feature_node_map, f"Feature '{feature.name}' already in"
 
         if isinstance(feature.node, (Field, Constant)):
             type_decl = feature.node.value_type
         elif isinstance(feature.node, BaseMethod):
             type_decl = feature.node.return_type
-        else: assert False
+        else: assert False, f"Got unexpected Feature: {feature_node}"
 
         if isinstance(type_decl, ClassType):
             if type_decl.name in generic_map:
-                feature_value_type_map[feature.name] = generic_map[type_decl.name]
+                type_of = generic_map[type_decl.name]
+                feature_value_type_map[feature.name] = type_of
             elif type_decl.name in hierarchy:
-                feature_value_type_map[feature.name] = type_of_class_decl_type(type_decl)
-            else: raise CompilerError(
-                f"Unknown type '{type_decl.name}'", location=type_decl.location)
+                type_of = type_of_class_decl_type(type_decl)
+                feature_value_type_map[feature.name] = type_of
+            else:
+                raise CompilerError(f"Unknown type '{type_decl.name}'",
+                    location=type_decl.location)
         elif isinstance(type_decl, LikeCurrent):
-            feature_value_type_map[feature.name] = type_of_class_decl_type(class_type_decl)
+            type_of = type_of_class_decl_type(actuals)
+            feature_value_type_map[feature.name] = type_of
         elif isinstance(type_decl, LikeFeature):
-            mangled = f"{flatten_cls.class_name}_{type_decl.feature_name}"
-            like_anchored.append((mangled, feature))
+            like_anchored.append(
+                (mangle_name(type_decl.feature_name, class_name=actuals.name), feature))
             continue
-        else: assert False
+        else: assert False, f"Got unexpected TypeDecl: {type_decl}"
 
         check_clients_existence(feature, hierarchy)
         feature_clients_map[feature.name] = [
@@ -309,11 +425,12 @@ def make_class_symtab(
         like_feature_name, feature = like_anchored.pop(0)
 
         if like_feature_name in feature_value_type_map:
+            check_clients_existence(feature, hierarchy)
+
             feature_type = feature_value_type_map[like_feature_name]
             feature_value_type_map[feature.name] = feature_type
-
-            check_clients_existence(feature, hierarchy)
             feature_clients_map[feature.name] = feature.node.clients
+            feature_node_map[feature.name] = feature.node
 
             not_found = 0
             continue
@@ -328,7 +445,55 @@ def make_class_symtab(
             ending = "s" if not_found > 1 else ""
             raise CompilerError(
                 f"Anchored to features that do not exist or are mutually recursive. See feature{ending}: {locations_info}")
-    
+
+    signatures = {}
+    for feature_name, feature_node in feature_node_map.items():
+        if isinstance(feature_node, (Field, Constant)):
+            parameters = []
+        elif isinstance(feature_node, BaseMethod):
+            parameters = feature_node.parameters
+        else: assert False, f"Got unexpected Feature: {feature_node}"
+
+        typed_parameters = []
+        for param in parameters:
+            possible_feature_name = mangle_name(param.name, class_name=actuals.name)
+            if possible_feature_name in feature_node_map:
+                raise CompilerError(
+                    f"Parameter '{var_decl.name}' conflits with feature '{var_decl.name}' of class '{class_type.full_name}', consider different name")
+
+            param_name = mangle_name(param.name)
+            param_type = guess_type(
+                param.value_type,
+                actuals,
+                feature_value_type_map,
+                hierarchy)
+            typed_parameters.append((param_name, param_type))
+        
+        signatures[feature_name] = typed_parameters
+
+    local_variables = {}
+    for feature_name, feature_node in feature_node_map.items():
+        if isinstance(feature_node, (Field, Constant, ExternalMethod)):
+            continue
+        assert isinstance(feature_node, Method), "Expected 'feature_node' to be Method"
+
+        typed_variables = []
+        for var_decl in feature_node.local_var_decls:
+            possible_feature_name = mangle_name(var_decl.name, class_name=actuals.name)
+            if possible_feature_name in feature_node_map:
+                raise CompilerError(
+                    f"Variable '{var_decl.name}' conflits with feature '{var_decl.name}' of class '{class_type.full_name}', consider different name")
+
+            var_name = mangle_name(var_decl.name)
+            var_type = guess_type(
+                var_decl.value_type,
+                actuals,
+                feature_value_type_map,
+                hierarchy)
+            typed_variables.append((var_name, var_type))
+        
+        local_variables[feature_name] = typed_variables
+
     return ClassSymbolTable(
         type_of=class_type,
         is_deferred=flatten_cls.class_decl.is_deferred,
@@ -338,107 +503,17 @@ def make_class_symtab(
         constructors=constructors,
         class_interface=class_interface,
         generic_map=generic_map,
-        feature_signatures_map={})
-
-
-@dataclass(frozen=True)
-class LocalSymbolTable:
-    method_name: str
-    parameters: list[tuple[str, Type]]
-    variables: list[tuple[str, Type]]
-    all_locals: dict[str, Type]
-    class_symtab: ClassSymbolTable
-
-    def has_local(self, local_name: str) -> bool:
-        return local_name in self.variables or local_name in self.parameters
-
-    def type_of(self, local_name: str) -> bool:
-        assert self.has_local(local_name)
-        return self.all_locals[local_name]
-        
-    def mangle_name(self, name: str) -> str:
-        return f"local_{name}"
-
-
-def make_local_symtab(
-        method_name: str,
-        method: BaseMethod,
-        class_symtab: ClassSymbolTable,
-        hierarchy: ClassHierarchy) -> LocalSymbolTable:
-    
-    def bindings_of(parameters_or_locals, local_type_name: str):
-        bindings = []
-
-        for param in parameters_or_locals:
-            name = param.name
-            param_type_decl = param.value_type
-
-            mangled_name = class_symtab.mangle_name(name)
-            if class_symtab.has_feature(mangled_name):
-                raise CompilerError(
-                    f"{local_type_name.capitalize()} '{name}' conflicts with feature '{name}' of class '{class_symtab.type_of.name}'",
-                    location=method.location)
-
-            mangled_name = f"local_{name}"
-            if any(b[0] == mangled_name for b in bindings):
-                raise CompilerError(
-                    f"{local_type_name.capitalize()} '{name} already defined"
-                )
-
-            if isinstance(param_type_decl, ClassType):
-                type_name = param_type_decl.name
-                if type_name in class_symtab.generic_map:
-                    param_type = class_symtab.generic_map[type_name]
-                elif type_name in hierarchy:
-                    param_type = type_of_class_decl_type(param_type_decl)
-                else: raise CompilerError(
-                    f"Unknown type '{type_name}'",
-                    location=param_type_decl.location)
-            elif isinstance(param_type_decl, LikeCurrent):
-                param_type = class_symtab.type_of
-            elif isinstance(param_type_decl, LikeFeature):
-                feature_name = param_type_decl.feature_name
-
-                feature_type = next(
-                    (t for (n, t) in bindings if n == feature_name), None)
-                if feature_type is None:
-                    mangled_name = class_symtab.mangle_name(feature_name)
-                    if not class_symtab.has_feature(mangled_name):
-                        raise CompilerError(
-                            f"{local_type_name.capitalize()} '{name}' uses 'like' for unknown feature '{feature_name}' in '{class_symtab.type_of.name}'",
-                            location=method.location)
-
-                    feature_type = class_symtab.type_of_feature(mangled_name)
-
-                param_type = feature_type
-            else: assert False
-
-            bindings.append((mangled_name, param_type))
-        
-        return bindings
-        
-    parameters = bindings_of(method.parameters, "parameter")
-    if not isinstance(method, Method):
-        return LocalSymbolTable(
-            method_name, parameters, [], dict(parameters), class_symtab)
-
-    variables = bindings_of(method.local_var_decls, "variable")
-    assert isinstance(method.return_type, ClassType)
-    if method.return_type.name != "<VOID>":
-        result_type = class_symtab.type_of_feature(
-            class_symtab.mangle_name(method_name))
-        variables.append(("local_Result", result_type))
-
-    return LocalSymbolTable(
-        method_name, parameters, variables, dict(parameters + variables), class_symtab)
+        feature_signatures_map=signatures,
+        variables=local_variables)
 
 
 class GlobalClassTable:
-    
+
     def __init__(self) -> None:
         self.classes = []
 
     def add_class_table(self, class_symtab: ClassSymbolTable) -> None:
+        assert not self.has_class_table(class_symtab.type_of.full_name)
         self.classes.append(class_symtab)
 
     def has_class_table(self, full_name: str) -> bool:
@@ -446,4 +521,4 @@ class GlobalClassTable:
 
     def get_class_table(self, full_name: str) -> ClassSymbolTable:
         assert self.has_class_table(full_name)
-        return next(c for c in self.classes if c.full_name == full_name)
+        return next(c for c in self.classes if c.type_of.full_name == full_name)

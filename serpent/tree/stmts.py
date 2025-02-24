@@ -3,7 +3,14 @@ from abc import ABC
 from dataclasses import dataclass
 
 from .abstract_node import *
-from .expr import Expr, FeatureCall, PrecursorCall, make_expr, make_feature_call, make_precursor_call
+from .expr import (
+    Expr,
+    FeatureCall,
+    PrecursorCall,
+    BracketAccess,
+    make_expr,
+    make_feature_call,
+    make_precursor_call)
 from serpent.tree.type_decl import ClassType, make_type_decl
 
 
@@ -19,8 +26,8 @@ class Assignment(Statement):
 
 @dataclass(match_args=True, kw_only=True)
 class CreateStmt(Statement):
-    constructor_call: FeatureCall
-    type_name: ClassType | None
+    constructor_call: ConstructorCall
+    object_type: ClassType | None
 
 
 @dataclass(match_args=True, kw_only=True)
@@ -121,7 +128,7 @@ def make_create_stmt(create_stmt_dict: dict) -> CreateStmt:
     )
 
 
-def make_constructor_call(constructor_call_dict: dict) -> FeatureCall:
+def make_constructor_call(constructor_call_dict: dict) -> ConstructorCall:
     constructor_name = (
         None
         if constructor_call_dict["feature"] is None
@@ -140,15 +147,27 @@ def make_constructor_call(constructor_call_dict: dict) -> FeatureCall:
     )
 
 
-def make_assignment_stmt(assignment_stmt_dict: dict) -> Assignment:
+def make_assignment_stmt(assignment_stmt_dict: dict) -> Assignment | RoutineCall:
     left = assignment_stmt_dict["left"]
-    return Assignment(
+    assignment = Assignment(
         location=Location(
             **assignment_stmt_dict["location"]),
         target=left["value"] if left["type"] == "ident_lit" else make_expr(left),
         value=make_expr(
             assignment_stmt_dict["right"]),
     )
+    
+    if isinstance(assignment.target, BracketAccess):
+        put_call = FeatureCall(
+            location=assignment.location,
+            feature_name="put",
+            arguments=[assignment.value, assignment.target.right],
+            owner=assignment.target.left)
+        return RoutineCall(
+            location=assignment.location,
+            feature_call=put_call)
+    
+    return assignment
 
 
 def make_if_stmt(if_stmt_dict: dict) -> IfStmt:

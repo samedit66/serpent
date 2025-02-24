@@ -620,7 +620,11 @@ mk_create_expr(Json *object_type, Json *constructor_call) {
 
     add_type_to_node(create_expr, "create_expr");
     Json_add_object_to_object(create_expr, "object_type", object_type);
-    Json_add_object_to_object(create_expr, "constructor_call", constructor_call);
+
+    if (constructor_call == NULL)
+        Json_add_null_to_object(create_expr, "constructor_call");
+    else
+        Json_add_object_to_object(create_expr, "constructor_call", constructor_call);
 
     return create_expr;
 }
