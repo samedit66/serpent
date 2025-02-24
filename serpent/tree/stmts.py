@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .abstract_node import *
 from .expr import (
@@ -33,8 +33,8 @@ class CreateStmt(Statement):
 @dataclass(match_args=True, kw_only=True)
 class ConstructorCall(Node):
     object_name: str
-    constructor_name: str | None
-    arguments: list[Expr]
+    constructor_name: str
+    arguments: list[Expr] = field(default_factory=list)
 
 
 @dataclass(match_args=True, kw_only=True)
@@ -130,7 +130,7 @@ def make_create_stmt(create_stmt_dict: dict) -> CreateStmt:
 
 def make_constructor_call(constructor_call_dict: dict) -> ConstructorCall:
     constructor_name = (
-        None
+        "default_create"
         if constructor_call_dict["feature"] is None
         else constructor_call_dict["feature"]["name"]
     )

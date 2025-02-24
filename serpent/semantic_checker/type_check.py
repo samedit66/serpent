@@ -3,8 +3,13 @@ from dataclasses import dataclass, field
 
 from serpent.tree.expr import *
 from serpent.tree.stmts import *
-from serpent.tree.features import Constant, Field, BaseMethod, ExternalMethod, Method
-from serpent.errors import CompilerError
+from serpent.tree.features import (
+    Constant,
+    Field,
+    BaseMethod,
+    ExternalMethod,
+    Method)
+from serpent.errors import CompilerError, ErrorCollector
 from serpent.semantic_checker.analyze_inheritance import FlattenClass
 from serpent.semantic_checker.symtab import (
     Type,
@@ -410,12 +415,8 @@ def annotate_create_expr(
 
     create_object_symtab = global_class_table.get_class_table(
         expr_type.full_name)
-    if constructor_call is None:
-        constructor_name = "default_create"
-        arguments = []
-    else:
-        constructor_name = constructor_call.feature_name
-        arguments = constructor_call.arguments
+    constructor_name = constructor_call.feature_name
+    arguments = constructor_call.arguments
 
     if create_object_symtab.is_deferred:
         raise CompilerError(
@@ -706,8 +707,8 @@ def annotate_create_stmt(create_stmt: CreateStmt,
         else:
             constructor_name = constructor_call.constructor_name        
 
-        feature_name = mangle_name(constructor_name, class_name=create_object_type.full_name)
-        if not create_object_symtab.has_feature(feature_name):
+        mangled_constructor_name = mangle_name(constructor_name, class_name=create_object_type.full_name)
+        if not create_object_symtab.has_feature(mangled_constructor_name):
             raise CompilerError(
                 f"Unknown constructor feature '{constructor_name}'",
                 location=create_stmt.location)
@@ -932,10 +933,14 @@ def make_codegen_class(flatten_cls: FlattenClass,
         return TClass(class_name="NONE", methods=[], fields=[])    
 
     if flatten_cls.class_decl.generics and actual_type is None:
-        assert False, f"Class '{flatten_cls.class_name}' is generic, actual type not provided"
+        assert False, (
+            f"Generic class '{flatten_cls.class_name}' requires an actual type, but none was provided."
+        )
 
     if not flatten_cls.class_decl.generics and actual_type is not None:
-        assert False, f"Class '{flatten_cls.class_name}' is not generic, actual type is redundant"
+        assert False, (
+            f"Non-generic class '{flatten_cls.class_name}' should not have an actual type provided."
+        )
 
     # Если переданный класс не найден в таблице всех классов,
     # значит нам необходимо его определить самостоятельно
@@ -961,12 +966,18 @@ def make_codegen_class(flatten_cls: FlattenClass,
             fields.append(TField(field_type, feature_name))
         elif isinstance(feature_node, Constant):
             if not isinstance(feature_node.constant_value, ConstantValue):
-                raise CompilerError(f"", location=feature_node.location)
+                raise CompilerError(
+                    f"Constant '{feature_name}' does not have a valid constant value",
+                    location=feature_node.location
+                )
             
             declared_field_type = symtab.type_of_feature(feature_name, self_called=True)
             actual_expr_type = annotate_constant_expr(feature_node.constant_value)
             if not actual_expr_type.expr_type.conforms_to(declared_field_type, hierarchy):
-                raise CompilerError(f"", location=feature_node.location)
+                raise CompilerError(
+                    f"Type mismatch in constant '{feature_name}': expected {declared_field_type}, got {actual_expr_type.expr_type}",
+                    location=feature_node.location
+                )
         elif isinstance(feature_node, BaseMethod):
 
             if isinstance(feature_node, ExternalMethod):
@@ -992,6 +1003,36 @@ def make_codegen_class(flatten_cls: FlattenClass,
                         symtab.get_feature_signature(feature_name),
                         symtab.get_variables(feature_name),
                         body))
-        else: assert False, f"Unexpected type of Feature: {feature_node}"
+        else:
+            assert False, (
+                f"Unexpected feature type '{type(feature_node).__name__}' encountered for feature '{feature_name}'"
+            )
 
     return TClass(symtab.full_type_name, methods, fields)
+
+
+def check_types(
+        flatten_classes: list[FlattenClass],
+        hierarchy: ClassHierarchy,
+        error_collector: ErrorCollector) -> list[TClass]:
+    non_generic_classes = [fc for fc in flatten_classes if not fc.class_decl.generics]
+
+    flatten_class_mapping = {fcls.class_name: fcls for fcls in flatten_classes}
+    global_class_table = GlobalClassTable()
+
+    codegen_classes = []
+    for flatten_cls in non_generic_classes:
+        try:
+            tclass = make_codegen_class(
+                flatten_cls,
+                hierarchy,
+                global_class_table,
+                flatten_class_mapping)
+            codegen_classes.append(tclass)
+        except CompilerError as error:
+            error_collector.add_error(error)
+    
+    if not error_collector.ok():
+        return []
+    
+    return codegen_classes

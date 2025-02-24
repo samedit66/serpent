@@ -243,7 +243,7 @@ class ClassSymbolTable:
 
 
 def check_generics(actuals, generic, hierarchy) -> None:
-    print("symtab.py: check_generics does not do anything meaningful")
+    pass
 
 
 def make_generic_map(
