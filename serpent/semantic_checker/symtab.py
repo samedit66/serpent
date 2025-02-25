@@ -1,5 +1,6 @@
 from __future__ import annotations
 import copy
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Iterable
 
@@ -90,6 +91,12 @@ class Type:
         return True
 
 
+# Худшее, что могло быть - глобальная переменная,
+# хранящее все встреченные дженерики...
+# Как сделать красивее не знаю, да и времени мало осталось...
+GLOBAL_GENERIC_TABLE: dict[str, list[Type]] = defaultdict(list)
+
+
 def type_of_class_decl_type(type_decl: ClassType) -> Type:
     generics = []
     for generic_decl in type_decl.generics:
@@ -105,7 +112,19 @@ def type_of_class_decl_type(type_decl: ClassType) -> Type:
                 generic_decl.location)
 
         generics.append(type_of_class_decl_type(generic_decl))
-    return Type(name=type_decl.name, generics=generics)
+
+    typ = Type(name=type_decl.name, generics=generics)
+    if typ.full_name != typ.name:
+        already_in = False
+
+        for t in GLOBAL_GENERIC_TABLE[typ.name]:
+            if t.full_name == typ.full_name:
+                already_in = True
+
+        if not already_in:
+            GLOBAL_GENERIC_TABLE[typ.name].append(typ)
+
+    return typ
 
 
 @dataclass(frozen=True)

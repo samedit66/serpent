@@ -20,7 +20,8 @@ from serpent.semantic_checker.symtab import (
     make_class_symtab,
     mangle_name,
     unmangle_name,
-    class_name_of_mangled_name)
+    class_name_of_mangled_name,
+    GLOBAL_GENERIC_TABLE)
 
 
 @dataclass(frozen=True)
@@ -1072,7 +1073,20 @@ def check_types(
     if not error_collector.ok():
         return []
 
-    codegen_classes_names = [
-        tclass.class_name for tclass in codegen_classes]
+    for class_name, types in GLOBAL_GENERIC_TABLE.items():
+        flatten_cls = flatten_class_mapping[class_name]
+
+        for typ in types:
+            actual_type = class_decl_type_of_type(typ)
+            try:
+                tclass = make_codegen_class(
+                    flatten_cls,
+                    hierarchy,
+                    global_class_table,
+                    flatten_class_mapping,
+                    actual_type=actual_type)
+                codegen_classes.append(tclass)
+            except CompilerError as error:
+                error_collector.add_error(error)
 
     return codegen_classes
