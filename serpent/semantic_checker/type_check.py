@@ -128,6 +128,7 @@ class TField(TExpr):
 class TMethod(ABC):
     method_name: str
     parameters: list[tuple[str, Type]]
+    return_type: Type
 
 
 @dataclass(frozen=True)
@@ -1019,6 +1020,7 @@ def make_codegen_class(flatten_cls: FlattenClass,
                     TExternalMethod(
                         feature_name,
                         symtab.get_feature_signature(feature_name),
+                        symtab.type_of_feature(feature_name, self_called=True),
                         feature_node.language,
                         feature_node.alias))
             elif isinstance(feature_node, Method):
@@ -1035,6 +1037,7 @@ def make_codegen_class(flatten_cls: FlattenClass,
                     TUserDefinedMethod(
                         feature_name,
                         symtab.get_feature_signature(feature_name),
+                        symtab.type_of_feature(feature_name, self_called=True),
                         symtab.get_variables(feature_name),
                         body))
         else:
@@ -1068,5 +1071,8 @@ def check_types(
 
     if not error_collector.ok():
         return []
+
+    codegen_classes_names = [
+        tclass.class_name for tclass in codegen_classes]
 
     return codegen_classes
