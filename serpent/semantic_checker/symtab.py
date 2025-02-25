@@ -97,7 +97,7 @@ def type_of_class_decl_type(type_decl: ClassType) -> Type:
             raise CompilerError(
                 "Generic type declarations must be concrete types, not generics",
                 generic_decl.location)
-        
+
         type_of = type_of_class_decl_type(generic_decl)
         if type_of.name == "NONE":
             raise CompilerError(
@@ -180,7 +180,8 @@ class ClassSymbolTable:
         assert self.has_feature(feature_name) \
             or (caller_type is None and feature_name in self.feature_node_map)
         clients = self.feature_clients_map[feature_name]
-        return any(caller_type.conforms_to(client, hierarchy) for client in clients)
+        return any(caller_type.conforms_to(client, hierarchy)
+                   for client in clients)
 
     def is_field(self, feature_name: str, self_called: bool = False) -> bool:
         """Проверяет, является ли заданная фича полем класса"""
@@ -223,7 +224,7 @@ class ClassSymbolTable:
     def get_feature_node(self, feature_name: str) -> Feature:
         assert feature_name in self.feature_signatures_map
         return self.feature_node_map[feature_name]
-    
+
     def has_local(self, feature_name: str, local_name: str) -> bool:
         assert self.has_feature(feature_name, self_called=True)
         parameters = self.feature_signatures_map[feature_name]
@@ -236,7 +237,7 @@ class ClassSymbolTable:
         variables = self.variables[feature_name]
         all_locals = parameters + variables
         return next(t for (n, t) in all_locals if n == local_name)
-    
+
     def get_variables(self, feature_name: str) -> Type:
         assert self.has_feature(feature_name, self_called=True)
         return self.variables[feature_name]
@@ -348,17 +349,20 @@ def guess_type(
     match type_decl:
         case ClassType(location=location, name=name):
             if name not in hierarchy:
-                raise CompilerError(f"Unknown type '{name}'", location=location)
+                raise CompilerError(
+                    f"Unknown type '{name}'",
+                    location=location)
             return type_of_class_decl_type(type_decl)
         case LikeCurrent(location=location):
             return type_of_class_decl_type(class_decl_type)
         case LikeFeature(location=location, feature_name=feature_name):
-            mangled_name = mangle_name(feature_name, class_name=class_decl_type.name)
+            mangled_name = mangle_name(
+                feature_name, class_name=class_decl_type.name)
             if mangled_name not in feature_value_type_map:
                 raise CompilerError(f"Unknown feature '{feature_name}'")
             return feature_value_type_map[mangled_name]
         case _: assert False, f"Got unexpected TypeDecl: {type_decl}"
-        
+
 
 def make_class_symtab(
         actuals: ClassType,
@@ -367,7 +371,10 @@ def make_class_symtab(
     # Необходимо вставить код проверки корректности дженериков
     # 1. Совпадают по количеству
     # 2. conforms_to
-    check_generics(actuals.generics, flatten_cls.class_decl.generics, hierarchy)
+    check_generics(
+        actuals.generics,
+        flatten_cls.class_decl.generics,
+        hierarchy)
     generic_map = make_generic_map(
         actuals.generics, flatten_cls.class_decl.generics)
 
@@ -386,13 +393,15 @@ def make_class_symtab(
 
     like_anchored = []
     for feature in explicit + implicit:
-        assert feature.name not in feature_node_map, f"Feature '{feature.name}' already in"
+        assert feature.name not in feature_node_map, f"Feature '{
+            feature.name}' already in"
 
         if isinstance(feature.node, (Field, Constant)):
             type_decl = feature.node.value_type
         elif isinstance(feature.node, BaseMethod):
             type_decl = feature.node.return_type
-        else: assert False, f"Got unexpected Feature: {feature_node}"
+        else:
+            assert False, f"Got unexpected Feature: {feature_node}"
 
         if isinstance(type_decl, ClassType):
             if type_decl.name in generic_map:
@@ -403,15 +412,19 @@ def make_class_symtab(
                 feature_value_type_map[feature.name] = type_of
             else:
                 raise CompilerError(f"Unknown type '{type_decl.name}'",
-                    location=type_decl.location)
+                                    location=type_decl.location)
         elif isinstance(type_decl, LikeCurrent):
             type_of = type_of_class_decl_type(actuals)
             feature_value_type_map[feature.name] = type_of
         elif isinstance(type_decl, LikeFeature):
             like_anchored.append(
-                (mangle_name(type_decl.feature_name, class_name=actuals.name), feature))
+                (mangle_name(
+                    type_decl.feature_name,
+                    class_name=actuals.name),
+                    feature))
             continue
-        else: assert False, f"Got unexpected TypeDecl: {type_decl}"
+        else:
+            assert False, f"Got unexpected TypeDecl: {type_decl}"
 
         check_clients_existence(feature, hierarchy)
         feature_clients_map[feature.name] = [
@@ -452,14 +465,19 @@ def make_class_symtab(
             parameters = []
         elif isinstance(feature_node, BaseMethod):
             parameters = feature_node.parameters
-        else: assert False, f"Got unexpected Feature: {feature_node}"
+        else:
+            assert False, f"Got unexpected Feature: {feature_node}"
 
         typed_parameters = []
         for param in parameters:
-            possible_feature_name = mangle_name(param.name, class_name=actuals.name)
+            possible_feature_name = mangle_name(
+                param.name, class_name=actuals.name)
             if possible_feature_name in feature_node_map:
                 raise CompilerError(
-                    f"Parameter '{var_decl.name}' conflits with feature '{var_decl.name}' of class '{class_type.full_name}', consider different name")
+                    f"Parameter '{
+                        var_decl.name}' conflits with feature '{
+                        var_decl.name}' of class '{
+                        class_type.full_name}', consider different name")
 
             param_name = mangle_name(param.name)
             param_type = guess_type(
@@ -468,21 +486,26 @@ def make_class_symtab(
                 feature_value_type_map,
                 hierarchy)
             typed_parameters.append((param_name, param_type))
-        
+
         signatures[feature_name] = typed_parameters
 
     local_variables = {}
     for feature_name, feature_node in feature_node_map.items():
         if isinstance(feature_node, (Field, Constant, ExternalMethod)):
             continue
-        assert isinstance(feature_node, Method), "Expected 'feature_node' to be Method"
+        assert isinstance(
+            feature_node, Method), "Expected 'feature_node' to be Method"
 
         typed_variables = []
         for var_decl in feature_node.local_var_decls:
-            possible_feature_name = mangle_name(var_decl.name, class_name=actuals.name)
+            possible_feature_name = mangle_name(
+                var_decl.name, class_name=actuals.name)
             if possible_feature_name in feature_node_map:
                 raise CompilerError(
-                    f"Variable '{var_decl.name}' conflits with feature '{var_decl.name}' of class '{class_type.full_name}', consider different name")
+                    f"Variable '{
+                        var_decl.name}' conflits with feature '{
+                        var_decl.name}' of class '{
+                        class_type.full_name}', consider different name")
 
             var_name = mangle_name(var_decl.name)
             var_type = guess_type(
@@ -491,10 +514,11 @@ def make_class_symtab(
                 feature_value_type_map,
                 hierarchy)
             typed_variables.append((var_name, var_type))
-        
+
         feature_return_type = feature_value_type_map[feature_name]
         if feature_return_type.full_name != "<VOID>":
-            typed_variables.append((mangle_name("Result"), feature_return_type))
+            typed_variables.append(
+                (mangle_name("Result"), feature_return_type))
 
         local_variables[feature_name] = typed_variables
 
@@ -525,4 +549,5 @@ class GlobalClassTable:
 
     def get_class_table(self, full_name: str) -> ClassSymbolTable:
         assert self.has_class_table(full_name)
-        return next(c for c in self.classes if c.type_of.full_name == full_name)
+        return next(
+            c for c in self.classes if c.type_of.full_name == full_name)

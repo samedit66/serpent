@@ -147,7 +147,8 @@ def make_constructor_call(constructor_call_dict: dict) -> ConstructorCall:
     )
 
 
-def make_assignment_stmt(assignment_stmt_dict: dict) -> Assignment | RoutineCall:
+def make_assignment_stmt(
+        assignment_stmt_dict: dict) -> Assignment | RoutineCall:
     left = assignment_stmt_dict["left"]
     assignment = Assignment(
         location=Location(
@@ -156,7 +157,7 @@ def make_assignment_stmt(assignment_stmt_dict: dict) -> Assignment | RoutineCall
         value=make_expr(
             assignment_stmt_dict["right"]),
     )
-    
+
     if isinstance(assignment.target, BracketAccess):
         put_call = FeatureCall(
             location=assignment.location,
@@ -166,7 +167,7 @@ def make_assignment_stmt(assignment_stmt_dict: dict) -> Assignment | RoutineCall
         return RoutineCall(
             location=assignment.location,
             feature_call=put_call)
-    
+
     return assignment
 
 

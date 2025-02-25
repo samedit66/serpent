@@ -5,7 +5,8 @@ from .abstract_node import *
 
 
 @dataclass
-class TypeDecl(Node, ABC): pass
+class TypeDecl(Node, ABC):
+    pass
 
 
 @dataclass(match_args=True, kw_only=True)

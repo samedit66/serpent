@@ -82,14 +82,14 @@ def pretty_print_node(node, indent=0) -> str:
             for method in node.methods:
                 lines.append(pretty_print_node(method, indent + 2))
         return "\n".join(lines)
-    
+
     elif isinstance(node, TField):
         return f"{sp}{node.name}: {node.expr_type.full_name}"
-    
+
     elif isinstance(node, TExternalMethod):
         params = ", ".join(f"{n}: {t.full_name}" for n, t in node.parameters)
         return f"{sp}{node.method_name}({params}) external {node.language} alias \"{node.alias}\""
-    
+
     elif isinstance(node, TUserDefinedMethod):
         params = ", ".join(f"{n}: {t.full_name}" for n, t in node.parameters)
         lines = [f"{sp}{node.method_name}({params}) do"]
@@ -105,7 +105,7 @@ def pretty_print_node(node, indent=0) -> str:
             lines.append(f"{sp}  Body: ...")
         lines.append(f"{sp}end")
         return "\n".join(lines)
-    
+
     elif isinstance(node, TAssignment):
         lines = [f"{sp}Assignment:"]
         lines.append(f"{sp}  LValue:")
@@ -113,7 +113,7 @@ def pretty_print_node(node, indent=0) -> str:
         lines.append(f"{sp}  RValue:")
         lines.append(pretty_print_node(node.rvalue, indent + 2))
         return "\n".join(lines)
-    
+
     elif isinstance(node, TIfStmt):
         lines = [f"{sp}If:"]
         lines.append(f"{sp}  Condition:")
@@ -133,7 +133,7 @@ def pretty_print_node(node, indent=0) -> str:
         for stmt in node.else_branch:
             lines.append(pretty_print_node(stmt, indent + 2))
         return "\n".join(lines)
-    
+
     elif isinstance(node, TLoopStmt):
         lines = [f"{sp}Loop:"]
         if node.init_stmts:
@@ -147,56 +147,61 @@ def pretty_print_node(node, indent=0) -> str:
             for stmt in node.body:
                 lines.append(pretty_print_node(stmt, indent + 2))
         return "\n".join(lines)
-    
+
     elif isinstance(node, TRoutineCall):
-        return f"{sp}RoutineCall:\n{pretty_print_node(node.feature_call, indent + 1)}"
-    
+        return f"{sp}RoutineCall:\n{
+            pretty_print_node(
+                node.feature_call,
+                indent + 1)}"
+
     elif isinstance(node, TFeatureCall):
         owner_str = ""
         if node.owner:
             owner_str = pretty_print_node(node.owner, 0) + "."
-        args_str = ", ".join(pretty_print_node(arg, 0) for arg in node.arguments)
+        args_str = ", ".join(pretty_print_node(arg, 0)
+                             for arg in node.arguments)
         return f"{sp}{owner_str}{node.feature_name}({args_str})"
-    
+
     elif isinstance(node, TCreateExpr):
-        args_str = ", ".join(pretty_print_node(arg, 0) for arg in node.arguments)
+        args_str = ", ".join(pretty_print_node(arg, 0)
+                             for arg in node.arguments)
         return f"{sp}new {node.constructor_name}({args_str})"
-    
+
     elif isinstance(node, TBinaryOp):
         left = pretty_print_node(node.left, 0)
         right = pretty_print_node(node.right, 0)
         return f"{sp}({left} {node.operator_name} {right})"
-    
+
     elif isinstance(node, TUnaryOp):
         arg = pretty_print_node(node.argument, 0)
         return f"{sp}({node.operator_name} {arg})"
-    
+
     elif isinstance(node, TVariable):
         return f"{sp}{node.name}"
-    
+
     elif isinstance(node, TIntegerConst):
         return f"{sp}{node.value}"
-    
+
     elif isinstance(node, TRealConst):
         return f"{sp}{node.value}"
-    
+
     elif isinstance(node, TCharacterConst):
         return f"{sp}'{node.value}'"
-    
+
     elif isinstance(node, TStringConst):
         return f'{sp}"{node.value}"'
-    
+
     elif isinstance(node, TBoolConst):
         return f"{sp}{node.value}"
-    
+
     elif isinstance(node, TVoidConst):
         return f"{sp}void"
-    
+
     elif isinstance(node, TExpr):
         return f"{sp}{node}"
-    
+
     elif isinstance(node, TStatement):
         return f"{sp}{node}"
-    
+
     else:
         return f"{sp}{node}"

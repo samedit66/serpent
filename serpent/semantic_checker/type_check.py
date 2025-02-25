@@ -194,13 +194,15 @@ def annotate_feature_call(
             flatten_class_mapping,
             context_method_name=context_method_name)
 
-        if not global_class_table.has_class_table(typed_owner.expr_type.full_name):
+        if not global_class_table.has_class_table(
+                typed_owner.expr_type.full_name):
             flatten_cls = flatten_class_mapping[typed_owner.expr_type.name]
 
             # Костыль: из объекта Type (владельница фичи) создаем объект
             # декларации типа, для генерации соответствующей таблицы
             actual_type = class_decl_type_of_type(typed_owner.expr_type)
-            owner_symtab = make_class_symtab(actual_type, flatten_cls, hierarchy)
+            owner_symtab = make_class_symtab(
+                actual_type, flatten_cls, hierarchy)
             global_class_table.add_class_table(owner_symtab)
 
         callee_symtab = global_class_table.get_class_table(
@@ -210,19 +212,24 @@ def annotate_feature_call(
 
         local_name = mangle_name(name)
         if symtab.has_local(context_method_name, local_name):
-            variable_type = symtab.type_of_local(context_method_name, local_name)
+            variable_type = symtab.type_of_local(
+                context_method_name, local_name)
             return TVariable(variable_type, local_name)
-        
+
         callee_symtab = symtab
 
     feature_name = mangle_name(name, class_name=callee_symtab.short_type_name)
-    if not callee_symtab.has_feature(feature_name, self_called=typed_owner is None):
+    if not callee_symtab.has_feature(
+            feature_name,
+            self_called=typed_owner is None):
         raise CompilerError(
-            f"Unknown feature '{printable_feature_name}' of class {callee_symtab.short_type_name}",
+            f"Unknown feature '{printable_feature_name}' of class {
+                callee_symtab.short_type_name}",
             location=feature_call.location)
 
     if typed_owner is not None:
-        if not callee_symtab.can_be_called(feature_name, hierarchy, symtab.type_of):
+        if not callee_symtab.can_be_called(
+                feature_name, hierarchy, symtab.type_of):
             raise CompilerError(
                 f"Objects of class '{symtab.type_of.name}' are \
 not allowed to call feature '{name}' of class '{callee_symtab.type_of.name}'"
@@ -363,11 +370,12 @@ def annotate_precursor_call(
 
         return TField(value_type, feature_name)
 
-    assert not symtab.is_constant(feature_name), f"Expected '{feature_name}' to be not Constant"
+    assert not symtab.is_constant(
+        feature_name), f"Expected '{feature_name}' to be not Constant"
 
     signature = symtab.get_feature_signature(feature_name)
     if len(arguments) != len(signature):
-        feature_node =symtab.get_feature_node(feature_name)
+        feature_node = symtab.get_feature_node(feature_name)
         raise CompilerError(
             f"Wrong number of arguments given to Precursor of feature '{feature_name}', expected {
                 len(signature)}, got {
@@ -409,7 +417,8 @@ def annotate_create_expr(
         # Костыль: из объекта Type (владельница фичи) создаем объект
         # декларации типа, для генерации соответствующей таблицы
         actual_type = class_decl_type_of_type(expr_type)
-        create_object_symtab = make_class_symtab(actual_type, flatten_cls, hierarchy)
+        create_object_symtab = make_class_symtab(
+            actual_type, flatten_cls, hierarchy)
         global_class_table.add_class_table(create_object_symtab)
 
     create_object_symtab = global_class_table.get_class_table(
@@ -419,10 +428,12 @@ def annotate_create_expr(
 
     if create_object_symtab.is_deferred:
         raise CompilerError(
-            f"Cannot call constructor feature '{constructor_name}' of deferred class '{create_object_symtab.type_of.full_name}'",
+            f"Cannot call constructor feature '{constructor_name}' of deferred class '{
+                create_object_symtab.type_of.full_name}'",
             location=create_expr.location)
 
-    constructor_name_mangled = mangle_name(constructor_name, class_name=create_object_symtab.type_of.full_name)
+    constructor_name_mangled = mangle_name(
+        constructor_name, class_name=create_object_symtab.type_of.full_name)
     if not create_object_symtab.has_feature(constructor_name_mangled):
         raise CompilerError(
             f"No constructor feature '{constructor_name}' found",
@@ -432,7 +443,8 @@ def annotate_create_expr(
             f"Feature '{constructor_name}' is not a constructor",
             location=create_expr.location)
 
-    if not create_object_symtab.can_be_called(constructor_name_mangled, hierarchy, symtab.type_of):
+    if not create_object_symtab.can_be_called(
+            constructor_name_mangled, hierarchy, symtab.type_of):
         raise CompilerError(
             f"Objects of class '{symtab.type_of.full_name}' are \
 not allowed to call constructor feature '{constructor_name}' of class '{create_object_symtab.type_of.full_name}'"
@@ -449,9 +461,11 @@ not allowed to call constructor feature '{constructor_name}' of class '{create_o
         for arg in arguments
     ]
 
-    signature = create_object_symtab.get_feature_signature(constructor_name_mangled)
+    signature = create_object_symtab.get_feature_signature(
+        constructor_name_mangled)
     if len(arguments) != len(signature):
-        feature_node = create_object_symtab.get_feature_node(constructor_name_mangled)
+        feature_node = create_object_symtab.get_feature_node(
+            constructor_name_mangled)
         raise CompilerError(
             f"Wrong number of arguments given to constructor feature '{constructor_name}', expected {
                 len(signature)}, got {
@@ -543,7 +557,8 @@ def annotate_unary_op(un_op: NotOp,
                       hierarchy: ClassHierarchy,
                       global_class_table: GlobalClassTable,
                       flatten_class_mapping: dict[str, FlattenClass]):
-    assert isinstance(operand, NotOp), "Only 'not' is supported as unary operator"
+    assert isinstance(
+        operand, NotOp), "Only 'not' is supported as unary operator"
 
     operand = un_op.operand
     typed_operand = annotate_expr_with_types(
@@ -619,7 +634,8 @@ def annotate_expr_with_types(
                 global_class_table,
                 flatten_class_mapping)
         case ResultConst() as result_const:
-            feature_value_type = symtab.type_of_feature(context_method_name, self_called=True)
+            feature_value_type = symtab.type_of_feature(
+                context_method_name, self_called=True)
             if feature_value_type.full_name == "<VOID>":
                 method_name = unmangle_name(context_method_name)
                 raise CompilerError(
@@ -643,10 +659,13 @@ def annotate_assignment(assignment: Assignment,
         local_name = mangle_name(assignment.target)
 
         if symtab.has_local(context_method_name, local_name):
-            variable_type = symtab.type_of_local(context_method_name, local_name)
+            variable_type = symtab.type_of_local(
+                context_method_name, local_name)
             left = TVariable(variable_type, assignment.target)
         else:
-            feature_name = mangle_name(assignment.target, class_name=symtab.full_type_name)
+            feature_name = mangle_name(
+                assignment.target,
+                class_name=symtab.full_type_name)
             if not symtab.has_feature(feature_name):
                 raise CompilerError(
                     f"Unknown feature or variable '{assignment.target}'",
@@ -667,7 +686,8 @@ def annotate_assignment(assignment: Assignment,
             global_class_table,
             flatten_class_mapping,
             context_method_name=context_method_name)
-    else: assert False, f"Type of target is unknown: {assignment.target}"
+    else:
+        assert False, f"Type of target is unknown: {assignment.target}"
 
     right = annotate_expr_with_types(
         assignment.value,
@@ -698,24 +718,29 @@ def annotate_create_stmt(create_stmt: CreateStmt,
 
     if create_stmt.object_type is None:
         local_name = mangle_name(constructor_call.object_name)
-        create_object_type = symtab.type_of_local(context_method_name, local_name)
+        create_object_type = symtab.type_of_local(
+            context_method_name, local_name)
 
-        if not global_class_table.has_class_table(create_object_type.full_name):
+        if not global_class_table.has_class_table(
+                create_object_type.full_name):
             flatten_cls = flatten_class_mapping[create_object_type.full_name]
             # Костыль: из объекта Type (владельница фичи) создаем объект
             # декларации типа, для генерации соответствующей таблицы
             actual_type = class_decl_type_of_type(create_object_type)
-            create_object_symtab = make_class_symtab(actual_type, flatten_cls, hierarchy)
+            create_object_symtab = make_class_symtab(
+                actual_type, flatten_cls, hierarchy)
             global_class_table.add_class_table(create_object_symtab)
 
-        create_object_symtab = global_class_table.get_class_table(create_object_type.full_name)
+        create_object_symtab = global_class_table.get_class_table(
+            create_object_type.full_name)
 
         if constructor_call.constructor_name is None:
             constructor_name = "default_create"
         else:
-            constructor_name = constructor_call.constructor_name        
+            constructor_name = constructor_call.constructor_name
 
-        mangled_constructor_name = mangle_name(constructor_name, class_name=create_object_type.full_name)
+        mangled_constructor_name = mangle_name(
+            constructor_name, class_name=create_object_type.full_name)
         if not create_object_symtab.has_feature(mangled_constructor_name):
             raise CompilerError(
                 f"Unknown constructor feature '{constructor_name}'",
@@ -938,28 +963,27 @@ def make_codegen_class(flatten_cls: FlattenClass,
     # Дикий костыль, необходимый для того, чтобы при любом тексте в
     # в классе NONE отбрасывать все методы и поля
     if flatten_cls.class_name == "NONE":
-        return TClass(class_name="NONE", methods=[], fields=[])    
+        return TClass(class_name="NONE", methods=[], fields=[])
 
     if flatten_cls.class_decl.generics and actual_type is None:
-        assert False, (
-            f"Generic class '{flatten_cls.class_name}' requires an actual type, but none was provided."
-        )
+        assert False, (f"Generic class '{
+            flatten_cls.class_name}' requires an actual type, but none was provided.")
 
     if not flatten_cls.class_decl.generics and actual_type is not None:
-        assert False, (
-            f"Non-generic class '{flatten_cls.class_name}' should not have an actual type provided."
-        )
+        assert False, (f"Non-generic class '{
+            flatten_cls.class_name}' should not have an actual type provided.")
 
     # Если переданный класс не найден в таблице всех классов,
     # значит нам необходимо его определить самостоятельно
     if not global_class_table.has_class_table(flatten_cls.class_name):
-        actual_type = actual_type or ClassType(location=None, name=flatten_cls.class_name)
+        actual_type = actual_type or ClassType(
+            location=None, name=flatten_cls.class_name)
 
         symtab = make_class_symtab(
             actual_type,
             flatten_cls,
             hierarchy)
-        
+
         global_class_table.add_class_table(symtab)
     # В ином случае, просто получаем уже созданную таблицу класса
     else:
@@ -976,16 +1000,17 @@ def make_codegen_class(flatten_cls: FlattenClass,
             if not isinstance(feature_node.constant_value, ConstantValue):
                 raise CompilerError(
                     f"Constant '{feature_name}' does not have a valid constant value",
-                    location=feature_node.location
-                )
-            
-            declared_field_type = symtab.type_of_feature(feature_name, self_called=True)
-            actual_expr_type = annotate_constant_expr(feature_node.constant_value)
-            if not actual_expr_type.expr_type.conforms_to(declared_field_type, hierarchy):
+                    location=feature_node.location)
+
+            declared_field_type = symtab.type_of_feature(
+                feature_name, self_called=True)
+            actual_expr_type = annotate_constant_expr(
+                feature_node.constant_value)
+            if not actual_expr_type.expr_type.conforms_to(
+                    declared_field_type, hierarchy):
                 raise CompilerError(
-                    f"Type mismatch in constant '{feature_name}': expected {declared_field_type}, got {actual_expr_type.expr_type}",
-                    location=feature_node.location
-                )
+                    f"Type mismatch in constant '{feature_name}': expected {declared_field_type}, got {
+                        actual_expr_type.expr_type}", location=feature_node.location)
         elif isinstance(feature_node, BaseMethod):
 
             if isinstance(feature_node, ExternalMethod):
@@ -1012,9 +1037,8 @@ def make_codegen_class(flatten_cls: FlattenClass,
                         symtab.get_variables(feature_name),
                         body))
         else:
-            assert False, (
-                f"Unexpected feature type '{type(feature_node).__name__}' encountered for feature '{feature_name}'"
-            )
+            assert False, (f"Unexpected feature type '{
+                type(feature_node).__name__}' encountered for feature '{feature_name}'")
 
     return TClass(symtab.full_type_name, methods, fields)
 
@@ -1023,7 +1047,8 @@ def check_types(
         flatten_classes: list[FlattenClass],
         hierarchy: ClassHierarchy,
         error_collector: ErrorCollector) -> list[TClass]:
-    non_generic_classes = [fc for fc in flatten_classes if not fc.class_decl.generics]
+    non_generic_classes = [
+        fc for fc in flatten_classes if not fc.class_decl.generics]
 
     flatten_class_mapping = {fcls.class_name: fcls for fcls in flatten_classes}
     global_class_table = GlobalClassTable()
@@ -1039,8 +1064,8 @@ def check_types(
             codegen_classes.append(tclass)
         except CompilerError as error:
             error_collector.add_error(error)
-    
+
     if not error_collector.ok():
         return []
-    
+
     return codegen_classes
