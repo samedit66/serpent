@@ -244,6 +244,7 @@ class ClassSymbolTable:
 
 
 def check_generics(actuals, generic, hierarchy) -> None:
+    """Здесь должна быть проверка на корректность дженериков..."""
     pass
 
 
