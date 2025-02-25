@@ -212,8 +212,6 @@ class ClassSymbolTable:
             feature_name: str,
             self_called: bool = False) -> Type:
         """Возвращает тип для заданной фичи"""
-        print("ZZZZZZZZZZZ", self.full_type_name, feature_name)
-        print(list(self.feature_node_map.keys()))
         assert self.has_feature(feature_name, self_called)
         return self.feature_value_type_map[feature_name]
 
@@ -227,7 +225,6 @@ class ClassSymbolTable:
         return self.feature_node_map[feature_name]
     
     def has_local(self, feature_name: str, local_name: str) -> bool:
-        print(self.type_of.full_name, feature_name)
         assert self.has_feature(feature_name, self_called=True)
         parameters = self.feature_signatures_map[feature_name]
         variables = self.variables[feature_name]

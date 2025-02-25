@@ -178,10 +178,6 @@ def annotate_feature_call(
         hierarchy: ClassHierarchy,
         global_class_table: GlobalClassTable,
         flatten_class_mapping: dict[str, FlattenClass]):
-    print(11111111, symtab.full_type_name, context_method_name)
-    if feature_call.feature_name.endswith("product"):
-        print("FUCKSSS")
-
     name = feature_call.feature_name
     owner = feature_call.owner
 
@@ -213,11 +209,8 @@ def annotate_feature_call(
         typed_owner = None
 
         local_name = mangle_name(name)
-        print(2222222222222, local_name)
         if symtab.has_local(context_method_name, local_name):
-            print("ENTERED")
             variable_type = symtab.type_of_local(context_method_name, local_name)
-            print("EEEEEEEEEEEE")
             return TVariable(variable_type, local_name)
         
         callee_symtab = symtab
@@ -626,7 +619,6 @@ def annotate_expr_with_types(
                 global_class_table,
                 flatten_class_mapping)
         case ResultConst() as result_const:
-            print("DDDDDDD", symtab.full_type_name, context_method_name)
             feature_value_type = symtab.type_of_feature(context_method_name, self_called=True)
             if feature_value_type.full_name == "<VOID>":
                 method_name = unmangle_name(context_method_name)
@@ -668,8 +660,6 @@ def annotate_assignment(assignment: Assignment,
             field_type = symtab.type_of_feature(feature_name)
             left = TField(field_type, assignment.target)
     elif isinstance(assignment.target, Expr):
-        print(f"INSIDE LEFT, symtab: {symtab.full_type_name}")
-        print(assignment.target)
         left = annotate_expr_with_types(
             assignment.target,
             symtab,
@@ -677,11 +667,8 @@ def annotate_assignment(assignment: Assignment,
             global_class_table,
             flatten_class_mapping,
             context_method_name=context_method_name)
-        print("FUCK:", left)
     else: assert False, f"Type of target is unknown: {assignment.target}"
 
-    print(f"Context method name: {context_method_name}")
-    print(f"Rvalue of assignment: {assignment.value}")
     right = annotate_expr_with_types(
         assignment.value,
         symtab,
@@ -690,7 +677,6 @@ def annotate_assignment(assignment: Assignment,
         flatten_class_mapping,
         context_method_name=context_method_name
     )
-    print("AFTER RIGHT")
 
     if not right.expr_type.conforms_to(left.expr_type, hierarchy):
         raise CompilerError(
