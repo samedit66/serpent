@@ -178,6 +178,10 @@ def annotate_feature_call(
         hierarchy: ClassHierarchy,
         global_class_table: GlobalClassTable,
         flatten_class_mapping: dict[str, FlattenClass]):
+    print(11111111, symtab.full_type_name, context_method_name)
+    if feature_call.feature_name.endswith("product"):
+        print("FUCKSSS")
+
     name = feature_call.feature_name
     owner = feature_call.owner
 
@@ -203,33 +207,35 @@ def annotate_feature_call(
             owner_symtab = make_class_symtab(actual_type, flatten_cls, hierarchy)
             global_class_table.add_class_table(owner_symtab)
 
-        symtab = global_class_table.get_class_table(
+        callee_symtab = global_class_table.get_class_table(
             typed_owner.expr_type.full_name)
     else:
         typed_owner = None
 
         local_name = mangle_name(name)
+        print(2222222222222, local_name)
         if symtab.has_local(context_method_name, local_name):
+            print("ENTERED")
             variable_type = symtab.type_of_local(context_method_name, local_name)
+            print("EEEEEEEEEEEE")
             return TVariable(variable_type, local_name)
+        
+        callee_symtab = symtab
 
-    feature_name = mangle_name(name, class_name=symtab.type_of.name)
-    if not symtab.has_feature(feature_name, self_called=typed_owner is None):
+    feature_name = mangle_name(name, class_name=callee_symtab.short_type_name)
+    if not callee_symtab.has_feature(feature_name, self_called=typed_owner is None):
         raise CompilerError(
-            f"Unknown feature {printable_feature_name}'",
+            f"Unknown feature '{printable_feature_name}' of class {callee_symtab.short_type_name}",
             location=feature_call.location)
 
     if typed_owner is not None:
-        callee_symtab = global_class_table.get_class_table(
-            typed_owner.expr_type.full_name)
-        
         if not callee_symtab.can_be_called(feature_name, hierarchy, symtab.type_of):
             raise CompilerError(
                 f"Objects of class '{symtab.type_of.name}' are \
 not allowed to call feature '{name}' of class '{callee_symtab.type_of.name}'"
             )
 
-    value_type = symtab.type_of_feature(feature_name)
+    value_type = callee_symtab.type_of_feature(feature_name)
     arguments = [
         annotate_expr_with_types(
             arg,
@@ -241,17 +247,17 @@ not allowed to call feature '{name}' of class '{callee_symtab.type_of.name}'"
         for arg in feature_call.arguments
     ]
 
-    if symtab.is_field(
-            feature_name) or symtab.is_constant(feature_name):
+    if callee_symtab.is_field(
+            feature_name) or callee_symtab.is_constant(feature_name):
         if arguments:
             raise CompilerError(
                 f"Feature '{printable_feature_name}' is not a method, arguments cannot be given",
                 location=feature_call.location)
 
-        if symtab.is_field(feature_name):
+        if callee_symtab.is_field(feature_name):
             return TField(value_type, feature_name)
         else:
-            constant_node = symtab.get_feature_node(feature_name)
+            constant_node = callee_symtab.get_feature_node(feature_name)
             assert isinstance(constant_node, Constant)
 
             return annotate_expr_with_types(
@@ -262,9 +268,9 @@ not allowed to call feature '{name}' of class '{callee_symtab.type_of.name}'"
                 flatten_class_mapping,
                 context_method_name=context_method_name)
 
-    signature = symtab.get_feature_signature(feature_name)
+    signature = callee_symtab.get_feature_signature(feature_name)
     if len(arguments) != len(signature):
-        feature_node = symtab.get_feature_node(feature_name)
+        feature_node = callee_symtab.get_feature_node(feature_name)
         raise CompilerError(
             f"Wrong number of arguments given to feature '{printable_feature_name}', expected {
                 len(signature)}, got {
@@ -619,9 +625,19 @@ def annotate_expr_with_types(
                 hierarchy,
                 global_class_table,
                 flatten_class_mapping)
+        case ResultConst() as result_const:
+            print("DDDDDDD", symtab.full_type_name, context_method_name)
+            feature_value_type = symtab.type_of_feature(context_method_name, self_called=True)
+            if feature_value_type.full_name == "<VOID>":
+                method_name = unmangle_name(context_method_name)
+                raise CompilerError(
+                    f"Invalid use of 'Result': feature '{method_name}' is a procedure and cannot yield a \
+result. Use 'Result' only within functions that return a value",
+                    location=result_const.location)
+            return TVariable(feature_value_type, mangle_name("Result"))
         case _:
             raise CompilerError(
-                "Unsupported expression type",
+                f"Unsupported expression type: {expr}",
                 location=expr.location)
 
 
@@ -652,6 +668,8 @@ def annotate_assignment(assignment: Assignment,
             field_type = symtab.type_of_feature(feature_name)
             left = TField(field_type, assignment.target)
     elif isinstance(assignment.target, Expr):
+        print(f"INSIDE LEFT, symtab: {symtab.full_type_name}")
+        print(assignment.target)
         left = annotate_expr_with_types(
             assignment.target,
             symtab,
@@ -659,8 +677,11 @@ def annotate_assignment(assignment: Assignment,
             global_class_table,
             flatten_class_mapping,
             context_method_name=context_method_name)
+        print("FUCK:", left)
     else: assert False, f"Type of target is unknown: {assignment.target}"
 
+    print(f"Context method name: {context_method_name}")
+    print(f"Rvalue of assignment: {assignment.value}")
     right = annotate_expr_with_types(
         assignment.value,
         symtab,
@@ -669,6 +690,7 @@ def annotate_assignment(assignment: Assignment,
         flatten_class_mapping,
         context_method_name=context_method_name
     )
+    print("AFTER RIGHT")
 
     if not right.expr_type.conforms_to(left.expr_type, hierarchy):
         raise CompilerError(

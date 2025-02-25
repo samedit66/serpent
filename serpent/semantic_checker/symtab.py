@@ -212,6 +212,8 @@ class ClassSymbolTable:
             feature_name: str,
             self_called: bool = False) -> Type:
         """Возвращает тип для заданной фичи"""
+        print("ZZZZZZZZZZZ", self.full_type_name, feature_name)
+        print(list(self.feature_node_map.keys()))
         assert self.has_feature(feature_name, self_called)
         return self.feature_value_type_map[feature_name]
 
@@ -225,6 +227,7 @@ class ClassSymbolTable:
         return self.feature_node_map[feature_name]
     
     def has_local(self, feature_name: str, local_name: str) -> bool:
+        print(self.type_of.full_name, feature_name)
         assert self.has_feature(feature_name, self_called=True)
         parameters = self.feature_signatures_map[feature_name]
         variables = self.variables[feature_name]
@@ -353,7 +356,7 @@ def guess_type(
         case LikeCurrent(location=location):
             return type_of_class_decl_type(class_decl_type)
         case LikeFeature(location=location, feature_name=feature_name):
-            mangled_name = mangle_name(feature_name, class_name=class_decl_type.class_name)
+            mangled_name = mangle_name(feature_name, class_name=class_decl_type.name)
             if mangled_name not in feature_value_type_map:
                 raise CompilerError(f"Unknown feature '{feature_name}'")
             return feature_value_type_map[mangled_name]
@@ -492,6 +495,10 @@ def make_class_symtab(
                 hierarchy)
             typed_variables.append((var_name, var_type))
         
+        feature_return_type = feature_value_type_map[feature_name]
+        if feature_return_type.full_name != "<VOID>":
+            typed_variables.append((mangle_name("Result"), feature_return_type))
+
         local_variables[feature_name] = typed_variables
 
     return ClassSymbolTable(

@@ -486,7 +486,6 @@ def merge(features: list[FeatureRecord],
 
         if len(effective) == 1:
             effective_feature = effective[0]
-
             inherited.append(effective_feature)
 
             if len(deferred) > 0:
@@ -505,6 +504,8 @@ def merge(features: list[FeatureRecord],
             f"Class '{
                 class_decl.class_name}' got feature '{feature_name}' 2 or more times, see also {locations_info}",
             location=class_decl.location)
+
+    inherited = [f for f in inherited if f.from_class != class_decl.class_name]
 
     return inherited, undefined
 
@@ -651,10 +652,12 @@ def adapt(class_decl: ClassDecl,
         for features in parent_to_features.values()
         for feature in features])
 
-    # 6 этап. "Сливаем" все фичи вместе
-    inherited, undefined = merge(all_features, class_decl)
+    own = child_table.own
 
-    check_if_all_defined(inherited + child_table.own, class_decl)
+    # 6 этап. "Сливаем" все фичи вместе
+    inherited, undefined = merge(all_features + own, class_decl)
+
+    check_if_all_defined(inherited + own, class_decl)
 
     child_table.renamed = remove_duplicates(child_table.renamed)
     child_table.undefined = remove_duplicates(
@@ -666,10 +669,10 @@ def adapt(class_decl: ClassDecl,
 
     check_create_clause(class_decl, child_table.explicit_features)
 
-    constructors, own_child_features = split_create_features(
-        child_table.own, class_decl.create)
+    constructors, own = split_create_features(
+        own, class_decl.create)
     child_table.constructors = constructors
-    child_table.own = own_child_features
+    child_table.own = own
 
     return child_table
 
