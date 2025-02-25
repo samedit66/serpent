@@ -439,6 +439,7 @@ def annotate_create_expr(
             f"No constructor feature '{constructor_name}' found",
             location=create_expr.location)
     if not create_object_symtab.is_constructor(constructor_name_mangled):
+        print(99999, create_object_symtab.constructors)
         raise CompilerError(
             f"Feature '{constructor_name}' is not a constructor",
             location=create_expr.location)

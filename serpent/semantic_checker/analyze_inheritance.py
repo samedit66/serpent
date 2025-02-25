@@ -687,6 +687,11 @@ def adapt(class_decl: ClassDecl,
 
     check_create_clause(class_decl, child_table.explicit_features)
 
+    if class_decl.class_name == "D":
+        print("CONSTRUCTORS")
+        print(class_decl.create)
+        print(own)
+
     constructors, own = split_create_features(own, class_decl.create)
     child_table.constructors = constructors
     child_table.own = own
