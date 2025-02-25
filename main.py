@@ -8,76 +8,41 @@ from serpent.semantic_checker.examine_system import examine_system
 from serpent.semantic_checker.analyze_inheritance import analyze_inheritance
 from serpent.semantic_checker.symtab import make_class_symtab, ClassHierarchy
 
-eiffel_code = """
-class ANY
+eiffel_code = """class ANY
 feature
-    default_create do print (10) end
+    default_create do end
 
-    print (x: INTEGER): ARRAY[STRING] do end
-
-    out: STRING
-
-    to_string: like out
-
-    to_s: like to_string
-
-    twin: like Current
-    local
-        x: INTEGER
-        y: ARRAY[ANY]
-    do
+    to_string, out: STRING
+    -- Строковое представление объекта.
+    -- По умолчанию возвращает строку с описанием местоположения
+    -- объекта в памяти.
+    external "Java"
+    alias "com.eiffel.base.Any.out"
     end
 end
 
-class ARRAY [G]
+class TEST
 feature
-    item (i: INTEGER): G do end
+    Name: STRING = "Дмитрий"
 
-    test
-    do
-        x := create {ARRAY[INTEGER]}.default_create
+    print (s: STRING) do end
+
+    t do
+        print (Name)
     end
+
+    x: ARRAY[INTEGER]
 end
 
-class INTEGER
-inherit ANY
-    redefine out end
+class ARRAY [E]
 feature
-    out: STRING do print (10) end
-feature
-    plus (other: like Current): like Current do end
-feature
-    test
-    local
-        x: STRING
-        y: INTEGER
-        z: BASE
-    do
-        x := Void
-        create z.make
-    end
+    some: E
+    item (index: INTEGER): E do end
 end
 
-class REAL
-feature
-    plus (other: like Current): like Current
-        external "Java"
-        alias "ss"
-    end
-end
+class INTEGER end
 
-class STRING end
-
-class BASE
-inherit ANY redefine out end
-create make
-feature
-    make do end
-    b: like a
-    a: STRING
-    out: STRING
-    c: like b
-end
+class STRING feature plus (other: like Current): like Current do end end
 
 class NONE end
 """
@@ -107,20 +72,24 @@ hierarchy = ClassHierarchy(ast)
 
 from serpent.tree.type_decl import ClassType
 from serpent.semantic_checker.symtab import GlobalClassTable, make_class_symtab
-from serpent.semantic_checker.type_check import make_codegen_class
+from serpent.semantic_checker.type_check import make_codegen_class, check_types
 from serpent.semantic_checker.utils import pretty_print_node
+from serpent.codegen.constant_pool import make_constant_pool
+from serpent.codegen.general_class import make_general_class
+from serpent.codegen.tables import create_class_file
 
 flatten_class_mapping = {fcls.class_name: fcls for fcls in flatten_classes}
 
-global_class_table = GlobalClassTable()
-tclass = make_codegen_class(
-    flatten_classes[2],
-    hierarchy,
-    global_class_table,
-    flatten_class_mapping)
+tclasses = check_types(flatten_classes, hierarchy, error_collector)
+if not error_collector.ok():
+    error_collector.show()
+    sys.exit(1)
 
-#symtab = make_class_symtab(
-#    ClassType(location=None, name="ANY"),
-#    flatten_classes[0],
-#    hierarchy)
-print(pretty_print_node(tclass))
+from serpent.codegen.constant_pool import *
+
+general_class = make_general_class(tclasses)
+print(pretty_print_node(general_class))
+
+constant_pool0 = make_constant_pool(tclasses[0])
+class_file = create_class_file(tclasses[0], constant_pool0, general_class)
+print(class_file)
