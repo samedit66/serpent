@@ -130,11 +130,16 @@ _append_double_to_buf(StringBuffer *strbuf, double value) {
     sprintf(buffer, "%f", value);
     
     // Убирает лишние нули, которые создает sprintf в конце числа
-    for (int i = strlen(buffer) - 2; i >= 0; i--)
+    for (int i = strlen(buffer) - 1; i >= 0; i--) {
         if (buffer[i] != '0') {
-            buffer[i+1] = '\0';
+            // Если найденная цифра — это точка, обрезаем и её
+            if (buffer[i] == '.')
+                buffer[i] = '\0';
+            else
+                buffer[i+1] = '\0';
             break;
         }
+    }
 
     StringBuffer_append(strbuf, buffer);
 }
