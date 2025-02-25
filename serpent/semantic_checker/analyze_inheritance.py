@@ -153,7 +153,7 @@ def check_redefine_clause(
     for feature_name in redefine_clause:
         if feature_name in seen:
             raise CompilerError(
-                f"Duplicate feature in redefine clause: {feature_name}",
+                f"Duplicate feature in redefine clause: '{feature_name}'",
                 parent.location)
         seen.add(feature_name)
 
@@ -161,14 +161,14 @@ def check_redefine_clause(
     for feature_name in redefine_clause:
         if not any(feature_name == pf.name for pf in parent_features):
             raise CompilerError(
-                f"Nonexistent parent feature in redefine clause: {feature_name}",
+                f"Nonexistent parent feature in redefine clause: '{feature_name}'",
                 parent.location)
 
     # Проверка, что дочерний класс действительно переопределяет фичу
     for feature_name in redefine_clause:
         if not any(feature_name == cf.name for cf in own_child_features):
             raise CompilerError(
-                f"Child class does not redefine a feature: {feature_name}",
+                f"Child class does not redefine a feature: '{feature_name}'",
                 parent.location)
 
     # Проверка, что не происходит попытка переопределить константу
@@ -177,7 +177,7 @@ def check_redefine_clause(
             pf.node for pf in parent_features if pf.name == feature_name)
         if isinstance(parent_feature, Constant):
             raise CompilerError(
-                f"Redefinition of constant 'f{feature_name}' is not allowed",
+                f"Redefinition of constant '{feature_name}' is not allowed",
                 parent.location)
         elif isinstance(parent_feature, Method) and parent_feature.is_deferred:
             raise CompilerError(
@@ -252,7 +252,7 @@ def check_undefine_clause(
         if any(feature_name == cf.name for cf in own_child_features):
             raise CompilerError(
                 f"Child class already redefines feature: {feature_name}. \
-                    Cannot undefine it. Consider moving it to redefine clause", parent.location)
+Cannot undefine it. Consider moving it to redefine clause", parent.location)
 
     # Проверка, что не происходит попытка переопределить константу
     for feature_name in undefine_clause:
@@ -486,7 +486,13 @@ def merge(features: list[FeatureRecord],
 
         if len(effective) == 1:
             effective_feature = effective[0]
-            inherited.append(effective_feature)
+
+            # Если фича пришла из дочернего класса,
+            # то мы не можем добавить ее в inherited -
+            # иначе случится конфликт, когда мы будем объединять
+            # inherited фичи и own фичи
+            if effective_feature.from_class != class_decl.class_name:
+                inherited.append(effective_feature)
 
             if len(deferred) > 0:
                 undefined.extend(
@@ -499,13 +505,13 @@ def merge(features: list[FeatureRecord],
             undefined.extend(deferred[1:])
             continue
 
+        assert len(effective) > 1
+
         locations_info = ", ".join(str(f.location) for f in features)
         raise CompilerError(
             f"Class '{
                 class_decl.class_name}' got feature '{feature_name}' 2 or more times, see also {locations_info}",
             location=class_decl.location)
-
-    inherited = [f for f in inherited if f.from_class != class_decl.class_name]
 
     return inherited, undefined
 
@@ -654,8 +660,20 @@ def adapt(class_decl: ClassDecl,
 
     own = child_table.own
 
+    if class_decl.class_name == "COMBINED_GREETER":
+        print("ALL FEATURES")
+        for f in all_features:
+            print(f)
+        print("_________")
+
     # 6 этап. "Сливаем" все фичи вместе
     inherited, undefined = merge(all_features + own, class_decl)
+    if class_decl.class_name == "COMBINED_GREETER":
+        for f in inherited:
+            print(f)
+        print("UNDEFINE")
+        for f in undefined:
+            print(f)
 
     check_if_all_defined(inherited + own, class_decl)
 
@@ -669,8 +687,7 @@ def adapt(class_decl: ClassDecl,
 
     check_create_clause(class_decl, child_table.explicit_features)
 
-    constructors, own = split_create_features(
-        own, class_decl.create)
+    constructors, own = split_create_features(own, class_decl.create)
     child_table.constructors = constructors
     child_table.own = own
 

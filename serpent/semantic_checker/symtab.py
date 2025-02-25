@@ -5,8 +5,8 @@ from typing import Iterable
 
 from serpent.tree.class_decl import ClassDecl, GenericSpec
 from serpent.tree.type_decl import TypeDecl, ClassType, LikeCurrent, LikeFeature
-from serpent.tree.features import BaseMethod, Field, Constant, Method, ExternalMethod, Feature, Parameter, LocalVarDecl
-from serpent.semantic_checker.analyze_inheritance import FlattenClass, FeatureRecord
+from serpent.tree.features import BaseMethod, Field, Constant, Method, ExternalMethod, Feature
+from serpent.semantic_checker.analyze_inheritance import FlattenClass, FeatureRecord, remove_duplicates
 from serpent.errors import CompilerError
 
 
@@ -282,7 +282,7 @@ def features_of_flatten_class(
     ]
 
     explicit = precursors + inherited + own
-    implicit = [
+    implicit = remove_duplicates([
         copy.replace(f, name=f"{f.from_class}_{f.name}")
         for f in (
             flatten_cls.renamed
@@ -290,7 +290,16 @@ def features_of_flatten_class(
             + flatten_cls.undefined
             + flatten_cls.selected
             + flatten_cls.inherited)
-    ]
+    ])
+
+    if flatten_cls.class_name == "D":
+        print("Explicit:")
+        for f in explicit: print(f.from_class, f.name)
+
+        print()
+
+        print("Implicit:")
+        for f in implicit: print(f.from_class, f.name, f.node)
 
     return explicit, implicit
 
