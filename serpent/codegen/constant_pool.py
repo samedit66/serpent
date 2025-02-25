@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from serpent.semantic_checker.symtab import Type
@@ -27,28 +28,48 @@ from serpent.semantic_checker.type_check import (
 
 
 @dataclass(frozen=True)
-class CONSTANT:
+class CONSTANT(ABC):
     index: int
+
+    @property
+    @abstractmethod
+    def tag(self) -> int: ...
 
 
 @dataclass(frozen=True)
 class CONSTANT_Utf8(CONSTANT):
     text: str
 
+    @property
+    def tag(self) -> int:
+        return 1
+
 
 @dataclass(frozen=True)
 class CONSTANT_Integer(CONSTANT):
     const: int
+
+    @property
+    def tag(self) -> int:
+        return 3
 
 
 @dataclass(frozen=True)
 class CONSTANT_Float(CONSTANT):
     const: float
 
+    @property
+    def tag(self) -> int:
+        return 4
+
 
 @dataclass(frozen=True)
 class CONSTANT_String(CONSTANT):
     string_index: int
+
+    @property
+    def tag(self) -> int:
+        return 8
 
 
 @dataclass(frozen=True)
@@ -56,10 +77,18 @@ class CONSTANT_NameAndType(CONSTANT):
     name_const_index: int
     type_const_index: int
 
+    @property
+    def tag(self) -> int:
+        return 12
+
 
 @dataclass(frozen=True)
 class CONSTANT_Class(CONSTANT):
     name_index: int
+
+    @property
+    def tag(self) -> int:
+        return 7
 
 
 @dataclass(frozen=True)
@@ -67,16 +96,28 @@ class CONSTANT_Fieldref(CONSTANT):
     class_index: int
     name_and_type_index: int
 
+    @property
+    def tag(self) -> int:
+        return 9
+
 
 @dataclass(frozen=True)
 class CONSTANT_Methodref(CONSTANT):
     class_index: int
     name_and_type_index: int
 
+    @property
+    def tag(self) -> int:
+        return 10
+
 
 class ConstantPool:
     def __init__(self) -> None:
         self.constant_pool: list[CONSTANT] = []
+
+    @property
+    def constants_count(self) -> int:
+        return len(self.constant_pool)
 
     @property
     def next_index(self) -> int:
