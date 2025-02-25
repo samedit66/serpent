@@ -238,8 +238,8 @@ def get_external_method_descriptor(method: TExternalMethod) -> str:
     Например, если метод имеет параметры (int, float) и возвращает void, дескриптор будет:
       (Lcom/eiffel/base/General;IF)V
     """
-    # Жёстко задаём тип для this, как указано: GENERAL -> "Lcom/eiffel/base/GENERAL;"
-    this_descriptor = "Lcom/eiffel/base/GENERAL;"
+    # Жёстко задаём тип для this, как указано: GENERAL -> "Lcom/eiffel/base/<GENERAL>;"
+    this_descriptor = "Lcom/eiffel/base/<GENERAL>;"
     # Генерируем дескрипторы для остальных параметров
     params_desc = "".join(get_type_descriptor(param_type) for _, param_type in method.parameters)
     # Собираем дескриптор с учетом того, что первый параметр — это this
