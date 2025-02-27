@@ -1,6 +1,56 @@
-from serpent.semantic_checker.type_check import TClass, TMethod, TField
+from typing import Iterable
+
+from serpent.semantic_checker.symtab import Type
+from serpent.semantic_checker.type_check import (
+    TClass,
+    TMethod,
+    TUserDefinedMethod,
+    TField,
+    TAssignment,
+    TExpr,
+    TIntegerConst,
+    TRealConst,
+    TStringConst,
+    TCharacterConst,
+    TBoolConst,
+    TVoidConst)
 
 from serpent.codegen.constant_pool import ROOT_CLASS_NAME, get_type_descriptor
+
+
+def default_value_for(typ: Type) -> TExpr:
+    match typ.name:
+        case "INTEGER":
+            value = TIntegerConst(typ, 0)
+        case "REAL":
+            value = TRealConst(typ, 0.)
+        case "STRING":
+            value = TStringConst(typ, "")
+        case "BOOLEAN":
+            value = TBoolConst(typ, False)
+        case "CHARACTER":
+            value = TCharacterConst(typ, "")
+        case _:
+            value = TVoidConst(typ)
+
+
+def make_general_constructor(fields: Iterable[TField]) -> TMethod:
+    assignments = []
+
+    for field in fields:
+        assignments.append(
+            TAssignment(
+                lvalue=field,
+                rvalue=default_value_for(field.expr_type))
+        )
+
+    return TUserDefinedMethod(
+        method_name="<init>",
+        parameters=[],
+        return_type=Type("<VOID>"),
+        is_constructor=True,
+        variables=[],
+        body=assignments)
 
 
 def make_general_class(classes: list[TClass]) -> TClass:
@@ -39,5 +89,10 @@ def make_general_class(classes: list[TClass]) -> TClass:
             if key not in seen_fields:
                 seen_fields[key] = True
                 unique_fields.append(field)
-    
+
+    # Добавляем конструктор по умолчанию, он не будет конфликтовать
+    # с уже найденными конструкторами, т.к. имеет уникальное имя <init>
+    unique_methods.append(make_general_constructor(unique_fields))
+
     return TClass(class_name=ROOT_CLASS_NAME, methods=unique_methods, fields=unique_fields)
+
