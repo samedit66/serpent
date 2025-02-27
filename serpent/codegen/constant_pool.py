@@ -178,147 +178,178 @@ class ConstantPool:
     def next_index(self) -> int:
         return len(self.constant_pool) + 1
 
-    def filter_constants(self, constant_type) -> list[CONSTANT]:
-        return [
-            constant
-            for constant in self.constant_pool
-            if isinstance(constant, constant_type)]
+    def _filter_constants(self, constant_type) -> list[CONSTANT]:
+        return [const for const in self.constant_pool if isinstance(const, constant_type)]
+
+    def _find_constant(self, constant_type, predicate) -> int:
+        """
+        Ищет константу заданного типа, удовлетворяющую условию predicate.
+        Возвращает индекс найденной константы или -1, если ничего не найдено.
+        """
+        for const in self._filter_constants(constant_type):
+            if predicate(const):
+                return const.index
+        return -1
 
     def add_constant_utf8(self, utf8_text: str) -> int:
-        for constant in self.filter_constants(CONSTANT_Utf8):
-            if constant.text == utf8_text:
-                return constant.index
-            
+        index = self._find_constant(CONSTANT_Utf8, lambda c: c.text == utf8_text)
+        if index != -1:
+            return index
         new_const = CONSTANT_Utf8(self.next_index, utf8_text)
         self.constant_pool.append(new_const)
         return new_const.index
-    
-    def add_constant_class(self, fq_class_name: str) -> int:
-        class_const_index = self.find_constant_class_index(fq_class_name)
-        if class_const_index != -1:
-            return class_const_index
 
-        utf8_const_index = self.add_constant_utf8(fq_class_name)
-        class_const = CONSTANT_Class(self.next_index, utf8_const_index)
+    def add_constant_class(self, fq_class_name: str) -> int:
+        index = self.find_constant_class_index(fq_class_name)
+        if index != -1:
+            return index
+        utf8_index = self.add_constant_utf8(fq_class_name)
+        class_const = CONSTANT_Class(self.next_index, utf8_index)
         self.constant_pool.append(class_const)
         return class_const.index
 
     def add_constant_integer(self, value: int) -> int:
-        for constant in self.filter_constants(CONSTANT_Integer):
-            if constant.const == value:
-                return constant.index
-            
+        index = self._find_constant(CONSTANT_Integer, lambda c: c.const == value)
+        if index != -1:
+            return index
         new_const = CONSTANT_Integer(self.next_index, value)
         self.constant_pool.append(new_const)
         return new_const.index
 
     def add_constant_float(self, value: float) -> int:
-        for constant in self.filter_constants(CONSTANT_Float):
-            if constant.const == value:
-                return constant.index
-            
+        index = self._find_constant(CONSTANT_Float, lambda c: c.const == value)
+        if index != -1:
+            return index
         new_const = CONSTANT_Float(self.next_index, value)
         self.constant_pool.append(new_const)
         return new_const.index
 
-    def add_constant_string(self, utf8_index: int) -> int:
-        for constant in self.filter_constants(CONSTANT_String):
-            if constant.string_index == utf8_index:
-                return constant.index
-            
+    def add_constant_string(self, utf8_text: str) -> int:
+        utf8_index = self.add_constant_utf8(utf8_text)
+        index = self._find_constant(CONSTANT_String, lambda c: c.string_index == utf8_index)
+        if index != -1:
+            return index
         new_const = CONSTANT_String(self.next_index, utf8_index)
         self.constant_pool.append(new_const)
         return new_const.index
 
-    def add_constant_fieldref(self, field: TField, fq_class_name: str) -> int:
-        field_name_idx = self.add_constant_utf8(field.name)
-
-        field_desc = get_type_descriptor(field.expr_type)
+    def add_fieldref(self, fq_class_name: str, field_name: str, field_desc: str) -> int:
+        """
+        Добавляет или находит Fieldref для поля с именем field_name и дескриптором field_desc в классе fq_class_name.
+        """
+        field_name_idx = self.add_constant_utf8(field_name)
         field_desc_idx = self.add_constant_utf8(field_desc)
 
-        nat_const = CONSTANT_NameAndType(
-            self.next_index,
-            name_const_index=field_name_idx,
-            type_const_index=field_desc_idx)
-        self.constant_pool.append(nat_const)
-        nat_const_idx = nat_const.index
+        # Находим или создаём запись NameAndType для поля
+        nat_index = self._find_constant(
+            CONSTANT_NameAndType,
+            lambda nat: nat.name_const_index == field_name_idx and nat.type_const_index == field_desc_idx
+        )
+        if nat_index == -1:
+            nat = CONSTANT_NameAndType(self.next_index, name_const_index=field_name_idx, type_const_index=field_desc_idx)
+            self.constant_pool.append(nat)
+            nat_index = nat.index
 
-        class_const_idx = self.find_constant_class_index(fq_class_name)
-        assert class_const_idx != -1
+        class_const_idx = self.add_constant_class(fq_class_name)
+        index = self._find_constant(
+            CONSTANT_Fieldref,
+            lambda fref: fref.class_index == class_const_idx and fref.name_and_type_index == nat_index
+        )
+        if index != -1:
+            return index
 
-        fieldref = CONSTANT_Fieldref(
-            self.next_index,
-            class_index=class_const_idx,
-            name_and_type_index=nat_const_idx)
+        fieldref = CONSTANT_Fieldref(self.next_index, class_index=class_const_idx, name_and_type_index=nat_index)
         self.constant_pool.append(fieldref)
-
         return fieldref.index
 
-    def add_constant_methodref(self, method: TUserDefinedMethod, fq_class_name: str) -> int:
-        method_name_idx = self.add_constant_utf8(method.method_name)
+    def add_methodref(self, fq_class_name: str, method_name: str, method_desc: str) -> int:
+        """
+        Добавляет или находит Methodref для метода с именем method_name и дескриптором method_desc в классе fq_class_name.
+        """
+        methodref_index = self.find_constant_methodref_index(fq_class_name, method_name, method_desc)
+        if methodref_index != -1:
+            return methodref_index
 
-        method_desc = get_method_descriptor(method)
+        class_const_idx = self.add_constant_class(fq_class_name)
+        method_name_idx = self.add_constant_utf8(method_name)
         method_desc_idx = self.add_constant_utf8(method_desc)
 
-        nat_method = CONSTANT_NameAndType(
-            self.next_index,
-            name_const_index=method_name_idx,
-            type_const_index=method_desc_idx)
-        self.constant_pool.append(nat_method)
-        nat_method_idx = nat_method.index
+        nat = CONSTANT_NameAndType(self.next_index, name_const_index=method_name_idx, type_const_index=method_desc_idx)
+        self.constant_pool.append(nat)
+        nat_index = nat.index
 
-        class_const_idx = self.find_constant_class_index(fq_class_name)
-        assert class_const_idx != -1
-
-        methodref = CONSTANT_Methodref(
-            self.next_index,
-            class_index=class_const_idx,
-            name_and_type_index=nat_method_idx)
+        methodref = CONSTANT_Methodref(self.next_index, class_index=class_const_idx, name_and_type_index=nat_index)
         self.constant_pool.append(methodref)
-
         return methodref.index
 
     def find_constant_methodref_index(self, fq_class_name: str, method_name: str, method_desc: str) -> int:
-        # TODO: когда-нибудь произвести рефакторинг...
-        # Сначала находим индекс класса по полному имени
+        """
+        Ищет в пуле констант запись Methodref по заданным fq_class_name, method_name и method_desc.
+        """
         class_index = self.find_constant_class_index(fq_class_name)
         if class_index == -1:
             return -1
-
-        # Ищем среди всех CONSTANT_Methodref
-        for methodref in self.filter_constants(CONSTANT_Methodref):
+        for methodref in self._filter_constants(CONSTANT_Methodref):
             if methodref.class_index != class_index:
-                continue  # не тот класс
-
-            # Получаем индекс записи CONSTANT_NameAndType, связанной с этим methodref
+                continue
             nat_index = methodref.name_and_type_index
-            # Ищем соответствующую запись CONSTANT_NameAndType
-            for nat in self.filter_constants(CONSTANT_NameAndType):
+            for nat in self._filter_constants(CONSTANT_NameAndType):
                 if nat.index != nat_index:
                     continue
-
-                # Извлекаем имя метода и дескриптор из соответствующих записей CONSTANT_Utf8
                 actual_name = None
                 actual_desc = None
-                for utf8 in self.filter_constants(CONSTANT_Utf8):
+                for utf8 in self._filter_constants(CONSTANT_Utf8):
                     if utf8.index == nat.name_const_index:
                         actual_name = utf8.text
                     if utf8.index == nat.type_const_index:
                         actual_desc = utf8.text
-
-                # Сравниваем с искомыми значениями
                 if actual_name == method_name and actual_desc == method_desc:
                     return methodref.index
+        return -1
 
+    def find_constant_fieldref_index(self, fq_class_name: str, field_name: str, field_desc: str) -> int:
+        """
+        Ищет в пуле констант запись Fieldref по заданным fq_class_name, field_name и field_desc.
+        """
+        class_index = self.find_constant_class_index(fq_class_name)
+        if class_index == -1:
+            return -1
+        for fieldref in self._filter_constants(CONSTANT_Fieldref):
+            if fieldref.class_index != class_index:
+                continue
+            nat_index = fieldref.name_and_type_index
+            for nat in self._filter_constants(CONSTANT_NameAndType):
+                if nat.index != nat_index:
+                    continue
+                actual_name = None
+                actual_desc = None
+                for utf8 in self._filter_constants(CONSTANT_Utf8):
+                    if utf8.index == nat.name_const_index:
+                        actual_name = utf8.text
+                    if utf8.index == nat.type_const_index:
+                        actual_desc = utf8.text
+                if actual_name == field_name and actual_desc == field_desc:
+                    return fieldref.index
         return -1
 
     def find_constant_class_index(self, fq_class_name: str) -> int:
-        for const in self.filter_constants(CONSTANT_Class):
-            for utf8_const in self.filter_constants(CONSTANT_Utf8):
-                if (utf8_const.index == const.name_index
-                        and utf8_const.text == fq_class_name):
+        for const in self._filter_constants(CONSTANT_Class):
+            for utf8_const in self._filter_constants(CONSTANT_Utf8):
+                if utf8_const.index == const.name_index and utf8_const.text == fq_class_name:
                     return const.index
         return -1
+
+    def add_field(self, fq_class_name: str, field: TField) -> int:
+        """
+        Обёртка для добавления ссылки на поле.
+        Использует имя поля (field.name) и его тип (через get_type_descriptor).
+        """
+        field_desc = get_type_descriptor(field.expr_type)
+        return self.add_fieldref(fq_class_name, field.name, field_desc)
+
+    def add_method(self, fq_class_name: str, method: TUserDefinedMethod) -> int:
+        method_desc = get_method_descriptor(method)
+        return self.add_methodref(fq_class_name, method.method_name, method_desc)
 
 
 def split_package_path(package: str) -> list[str]:
@@ -492,7 +523,7 @@ def make_constant_pool(tclass: TClass) -> ConstantPool:
 
     # Обработка полей класса.
     for field in tclass.fields:
-        constant_pool.add_constant_fieldref(field, fq_class_name)
+        constant_pool.add_field(fq_class_name, field)
 
     for method in tclass.methods:
         if isinstance(method, TExternalMethod):
@@ -500,7 +531,7 @@ def make_constant_pool(tclass: TClass) -> ConstantPool:
         else:
             assert isinstance(method, TUserDefinedMethod)
 
-            constant_pool.add_constant_methodref(method, fq_class_name)
+            constant_pool.add_method(fq_class_name, method)
             for stmt in method.body:
                 process_statement_literals(stmt, constant_pool)
 
