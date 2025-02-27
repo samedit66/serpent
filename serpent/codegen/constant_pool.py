@@ -27,6 +27,7 @@ from serpent.semantic_checker.type_check import (
     TExternalMethod,
     TUserDefinedMethod,
     TClass)
+from serpent.codegen.byte_utils import *
 
 
 DEFAULT_PACKAGE = "com.eiffel.base"
@@ -52,31 +53,6 @@ COMPILER_NAME = "serpent"
 """
 
 
-def u1(x: int) -> bytes:
-    # Кодирует число в 1 байт (big-endian)
-    return x.to_bytes(1, byteorder='big', signed=False)
-
-
-def u2(x: int) -> bytes:
-    # Кодирует число в 2 байта (big-endian)
-    return x.to_bytes(2, byteorder='big', signed=False)
-
-
-def s4(x: int) -> bytes:
-    # Кодирует число в 4 байта (big-endian) со знаком
-    return x.to_bytes(4, byteorder='big', signed=True)
-
-
-def u1_seq(s: str) -> bytes:
-    # Кодирует строку в последовательность байтов в формате UTF-8
-    return s.encode('utf-8')
-
-
-def bytecode(*bs: bytes) -> bytes:
-    # Объединяет все переданные байтовые последовательности в одну
-    return b"".join(bs)
-
-
 @dataclass(frozen=True)
 class CONSTANT(ABC):
     index: int
@@ -99,7 +75,7 @@ class CONSTANT_Utf8(CONSTANT):
     
     def to_bytes(self) -> bytes:
         text_bytes = u1_seq(self.text)
-        return bytecode(u1(self.tag), u2(len(text_bytes)), text_bytes)
+        return merge_bytes(u1(self.tag), u2(len(text_bytes)), text_bytes)
 
 
 @dataclass(frozen=True)
@@ -111,7 +87,7 @@ class CONSTANT_Integer(CONSTANT):
         return 3
     
     def to_bytes(self) -> bytes:
-        return bytecode(u1(self.tag), s4(self.const))
+        return merge_bytes(u1(self.tag), s4(self.const))
 
 
 @dataclass(frozen=True)
@@ -124,7 +100,7 @@ class CONSTANT_Float(CONSTANT):
     
     def to_bytes(self) -> bytes:
         # Упаковываем float в 4 байта в формате IEEE 754 (big-endian)
-        return bytecode(u1(self.tag), struct.pack(">f", self.const))
+        return merge_bytes(u1(self.tag), struct.pack(">f", self.const))
 
 
 @dataclass(frozen=True)
@@ -136,7 +112,7 @@ class CONSTANT_String(CONSTANT):
         return 8
 
     def to_bytes(self) -> bytes:
-        return bytecode(u1(self.tag), u2(self.string_index))
+        return merge_bytes(u1(self.tag), u2(self.string_index))
 
 
 @dataclass(frozen=True)
@@ -149,7 +125,7 @@ class CONSTANT_NameAndType(CONSTANT):
         return 12
 
     def to_bytes(self) -> bytes:
-        return bytecode(u1(self.tag), u2(self.name_const_index), u2(self.type_const_index))
+        return merge_bytes(u1(self.tag), u2(self.name_const_index), u2(self.type_const_index))
 
 
 @dataclass(frozen=True)
@@ -161,7 +137,7 @@ class CONSTANT_Class(CONSTANT):
         return 7
 
     def to_bytes(self) -> bytes:
-        return bytecode(u1(self.tag), u2(self.name_index))
+        return merge_bytes(u1(self.tag), u2(self.name_index))
 
 
 @dataclass(frozen=True)
@@ -174,7 +150,7 @@ class CONSTANT_Fieldref(CONSTANT):
         return 9
 
     def to_bytes(self) -> bytes:
-        return bytecode(u1(self.tag), u2(self.class_index), u2(self.name_and_type_index))
+        return merge_bytes(u1(self.tag), u2(self.class_index), u2(self.name_and_type_index))
 
 
 @dataclass(frozen=True)
@@ -187,7 +163,7 @@ class CONSTANT_Methodref(CONSTANT):
         return 10
 
     def to_bytes(self) -> bytes:
-        return bytecode(u1(self.tag), u2(self.class_index), u2(self.name_and_type_index))
+        return merge_bytes(u1(self.tag), u2(self.class_index), u2(self.name_and_type_index))
 
 
 class ConstantPool:
