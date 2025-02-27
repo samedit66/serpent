@@ -1,17 +1,23 @@
 from serpent.semantic_checker.type_check import (
     TExpr,
     TCreateExpr,
+    TIntegerConst,
     TStatement,
     TAssignment)
 
-from serpent.codegen.constant_pool import ConstantPool, add_package_prefix, get_type_descriptor
+from serpent.codegen.constant_pool import (
+    ConstantPool,
+    add_package_prefix,
+    get_type_descriptor)
 from serpent.codegen.bytecommand import *
 
 
 def generate_bytecode_for_literal(
         literal: TExpr,
         constant_pool: ConstantPool) -> list[ByteCommand]:
-    raise NotImplementedError
+    match literal:
+        case TIntegerConst(value=value):
+            ...
 
 
 def generate_bytecode_for_create_expr(

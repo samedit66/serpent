@@ -8,6 +8,11 @@ def u2(x: int) -> bytes:
     return x.to_bytes(2, byteorder='big', signed=False)
 
 
+def s2(x: int) -> bytes:
+    # Кодирует число в 2 байта (big-endian) со знаком
+    return x.to_bytes(2, byteorder='big', signed=True)
+
+
 def s4(x: int) -> bytes:
     # Кодирует число в 4 байта (big-endian) со знаком
     return x.to_bytes(4, byteorder='big', signed=True)

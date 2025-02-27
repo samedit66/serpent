@@ -371,7 +371,7 @@ def get_type_descriptor(typ: Type) -> str:
     Для примитивных типов используется однобуквенное обозначение,
     для ссылочных типов возвращается формат "L<fully-qualified-name>;"
     """
-    if typ.full_name == "<VOID>":
+    if typ.name == "<VOID>":
         return "V"
     # Если имя уже содержит '/', считаем его полностью квалифицированным
     fq_name = typ.name if "/" in typ.name else add_package_prefix(typ.name)
