@@ -130,6 +130,7 @@ class TMethod(ABC):
     method_name: str
     parameters: list[tuple[str, Type]]
     return_type: Type
+    is_constructor: bool
 
 
 @dataclass(frozen=True)
@@ -1015,6 +1016,7 @@ def make_codegen_class(flatten_cls: FlattenClass,
                     f"Type mismatch in constant '{feature_name}': expected {declared_field_type}, got {
                         actual_expr_type.expr_type}", location=feature_node.location)
         elif isinstance(feature_node, BaseMethod):
+            is_constructor = symtab.is_constructor(feature_name)
 
             if isinstance(feature_node, ExternalMethod):
                 methods.append(
@@ -1022,6 +1024,7 @@ def make_codegen_class(flatten_cls: FlattenClass,
                         feature_name,
                         symtab.get_feature_signature(feature_name),
                         symtab.type_of_feature(feature_name, self_called=True),
+                        is_constructor,
                         feature_node.language,
                         feature_node.alias))
             elif isinstance(feature_node, Method):
@@ -1039,6 +1042,7 @@ def make_codegen_class(flatten_cls: FlattenClass,
                         feature_name,
                         symtab.get_feature_signature(feature_name),
                         symtab.type_of_feature(feature_name, self_called=True),
+                        is_constructor,
                         symtab.get_variables(feature_name),
                         body))
         else:
