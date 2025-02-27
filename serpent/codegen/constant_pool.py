@@ -30,7 +30,26 @@ from serpent.semantic_checker.type_check import (
 
 
 DEFAULT_PACKAGE = "com.eiffel.base"
-ROOT_CLASS_NAME = "<GENERAL>"
+"""Пакет, в котором будут все классы, объявленные программистом
+или в стандартной библиотеке
+"""
+
+ROOT_CLASS_NAME = "GENERAL"
+"""Название корневого класса, который будет обладать всеми методами всех
+классов в программе. Является родителем класса ANY, определнного в
+стандартной библиотеки Eiffel
+"""
+
+PLATFORM_CLASS_NAME = "PLATFORM"
+"""Название класса из RTL-библиотеки, который определяет способы
+одностороннего (Eiffel -> Java) взиамодействия между Eiffel и Java классами.
+Является родителем для класса GENERAL
+"""
+
+COMPILER_NAME = "serpent"
+"""Имя компилятора, используется в отладочных целях при печати
+сообщений об ошибках
+"""
 
 
 def u1(x: int) -> bytes:
@@ -340,31 +359,30 @@ def process_statement_literals(stmt: TStatement, constant_pool: ConstantPool) ->
 
 
 def get_external_method_descriptor(method: TExternalMethod) -> str:
-    """
-    Формирует дескриптор метода, где первым параметром всегда является this типа General,
-    а затем идут остальные параметры, сгенерированные с использованием get_type_descriptor.
-    """
-    fq_name = make_fully_qualifed_name(split_package_path(DEFAULT_PACKAGE) + [ROOT_CLASS_NAME])
-    this_descriptor = f"L{fq_name};"
+    fq_name = make_fully_qualifed_name(split_package_path(DEFAULT_PACKAGE) + [PLATFORM_CLASS_NAME])
+    platform_descriptor = f"L{fq_name};"
 
-    params_desc = "".join(get_type_descriptor(param_type) for _, param_type in method.parameters)
-    full_params_desc = this_descriptor + params_desc
+    # В качестве типов параметров устанавливаем всем параметрам
+    # класса PLATFORM - это позволит реализовать взаимодействие между
+    # кодом на Eiffel и Java
+    params_desc = "".join(platform_descriptor * len(method.parameters))
+    full_params_desc = platform_descriptor + params_desc
 
+    # Аналогично поступаем для всех дескрипторов, которые не являются void
     return_desc = get_type_descriptor(method.return_type)
+    if return_desc != "V":
+        return_desc = platform_descriptor
+
     return f"({full_params_desc}){return_desc}"
 
 
 def process_external_method(constant_pool: ConstantPool, method: TExternalMethod) -> None:
-    """
-    Обрабатывает ExternalMethod и создаёт в пуле констант записи для вызова
-    статического Java-метода на основе alias, например:
-      alias "com.eiffel.base.Any.write"
-    Предполагается, что метод принимает один параметр типа General и возвращает void.
-    """
     full_alias = method.alias
     parts = split_package_path(full_alias)
     if len(parts) < 2:
-        raise ValueError(f"Incorrect alias: '{full_alias}'")
+        raise CompilerError(
+            f"Alias '{full_alias}' is not a correct reference to a Java method",
+            source=COMPILER_NAME)
     
     java_method_name = parts[-1]
     fq_java_class_name = make_fully_qualifed_name(parts[:-1])

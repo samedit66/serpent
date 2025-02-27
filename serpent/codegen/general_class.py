@@ -1,16 +1,16 @@
 from serpent.semantic_checker.type_check import TClass, TMethod, TField
 
-from serpent.codegen.constant_pool import get_type_descriptor
+from serpent.codegen.constant_pool import ROOT_CLASS_NAME, get_type_descriptor
 
 
 def make_general_class(classes: list[TClass]) -> TClass:
     """
-    Создаёт общий класс <GENERAL>, объединяя все методы и поля из списка классов.
+    Создаёт общий класс GENERAL, объединяя все методы и поля из списка классов.
     Если находятся дублирующиеся методы (одинаковая сигнатура: имя, возвращаемый тип и типы аргументов)
-    или поля (одинаковое имя и тип), они не добавляются повторно.
+    или поля (одинаковое имя и тип), они не добавляются повторно
     
-    :param classes: Список объектов TClass, из которых будут извлечены методы и поля.
-    :return: Новый объект TClass с именем "<GENERAL>", содержащий объединённые уникальные методы и поля.
+    :param classes: Список объектов TClass, из которых будут извлечены методы и поля
+    :return: Новый объект TClass с именем "GENERAL", содержащий объединённые уникальные методы и поля
     """
     def method_signature_key(method: TMethod) -> tuple:
         # Формируем ключ по: имя метода, дескриптор возвращаемого типа,
@@ -40,4 +40,4 @@ def make_general_class(classes: list[TClass]) -> TClass:
                 seen_fields[key] = True
                 unique_fields.append(field)
     
-    return TClass(class_name="<GENERAL>", methods=unique_methods, fields=unique_fields)
+    return TClass(class_name=ROOT_CLASS_NAME, methods=unique_methods, fields=unique_fields)
