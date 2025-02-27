@@ -194,11 +194,11 @@ class ConstantPool:
         return new_const.index
     
     def add_constant_class(self, fq_class_name: str) -> int:
-        class_const_index = self.find_constant_class_index(class_name)
+        class_const_index = self.find_constant_class_index(fq_class_name)
         if class_const_index != -1:
             return class_const_index
 
-        utf8_const_index = self.add_constant_utf8(class_name)
+        utf8_const_index = self.add_constant_utf8(fq_class_name)
         class_const = CONSTANT_Class(self.next_index, utf8_const_index)
         self.constant_pool.append(class_const)
         return class_const.index
