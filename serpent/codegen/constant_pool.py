@@ -193,7 +193,7 @@ class ConstantPool:
         self.constant_pool.append(new_const)
         return new_const.index
     
-    def add_constant_class(self, class_name: str) -> int:
+    def add_constant_class(self, fq_class_name: str) -> int:
         class_const_index = self.find_constant_class_index(class_name)
         if class_const_index != -1:
             return class_const_index
@@ -277,6 +277,40 @@ class ConstantPool:
         self.constant_pool.append(methodref)
 
         return methodref.index
+
+    def find_constant_methodref_index(self, fq_class_name: str, method_name: str, method_desc: str) -> int:
+        # TODO: когда-нибудь произвести рефакторинг...
+        # Сначала находим индекс класса по полному имени
+        class_index = self.find_constant_class_index(fq_class_name)
+        if class_index == -1:
+            return -1
+
+        # Ищем среди всех CONSTANT_Methodref
+        for methodref in self.filter_constants(CONSTANT_Methodref):
+            if methodref.class_index != class_index:
+                continue  # не тот класс
+
+            # Получаем индекс записи CONSTANT_NameAndType, связанной с этим methodref
+            nat_index = methodref.name_and_type_index
+            # Ищем соответствующую запись CONSTANT_NameAndType
+            for nat in self.filter_constants(CONSTANT_NameAndType):
+                if nat.index != nat_index:
+                    continue
+
+                # Извлекаем имя метода и дескриптор из соответствующих записей CONSTANT_Utf8
+                actual_name = None
+                actual_desc = None
+                for utf8 in self.filter_constants(CONSTANT_Utf8):
+                    if utf8.index == nat.name_const_index:
+                        actual_name = utf8.text
+                    if utf8.index == nat.type_const_index:
+                        actual_desc = utf8.text
+
+                # Сравниваем с искомыми значениями
+                if actual_name == method_name and actual_desc == method_desc:
+                    return methodref.index
+
+        return -1
 
     def find_constant_class_index(self, fq_class_name: str) -> int:
         for const in self.filter_constants(CONSTANT_Class):
