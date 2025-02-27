@@ -1049,6 +1049,16 @@ def make_codegen_class(flatten_cls: FlattenClass,
             assert False, (f"Unexpected feature type '{
                 type(feature_node).__name__}' encountered for feature '{feature_name}'")
 
+    # Добвляем конструктор по умолчанию
+    methods.append(
+        TUserDefinedMethod(
+            method_name="<init>",
+            parameters=[],
+            return_type=Type("<VOID>"),
+            is_constructor=True,
+            variables=[],
+            body=[]))
+
     return TClass(symtab.full_type_name, methods, fields)
 
 
