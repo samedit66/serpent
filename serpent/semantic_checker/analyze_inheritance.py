@@ -19,9 +19,13 @@ from ..errors import CompilerError, ErrorCollector
 
 @dataclass
 class FeatureRecord:
-    from_class: str
+    class_decl: str
     name: str
     node: Feature
+
+    @property
+    def from_class(self) -> str:
+        return self.class_decl.class_name
 
     @property
     def location(self) -> Location:
@@ -566,7 +570,7 @@ def adapt(class_decl: ClassDecl,
           class_mapping: dict[str, ClassDecl]):
     own_child_features = [
         FeatureRecord(
-            from_class=class_decl.class_name,
+            class_decl=class_decl,
             name=feature.name,
             node=feature)
         for feature in class_decl.features
@@ -660,21 +664,8 @@ def adapt(class_decl: ClassDecl,
 
     own = child_table.own
 
-    if class_decl.class_name == "COMBINED_GREETER":
-        print("ALL FEATURES")
-        for f in all_features:
-            print(f)
-        print("_________")
-
     # 6 этап. "Сливаем" все фичи вместе
     inherited, undefined = merge(all_features + own, class_decl)
-    if class_decl.class_name == "COMBINED_GREETER":
-        for f in inherited:
-            print(f)
-        print("UNDEFINE")
-        for f in undefined:
-            print(f)
-
     check_if_all_defined(inherited + own, class_decl)
 
     child_table.renamed = remove_duplicates(child_table.renamed)
@@ -687,10 +678,6 @@ def adapt(class_decl: ClassDecl,
 
     check_create_clause(class_decl, child_table.explicit_features)
 
-    if class_decl.class_name == "D":
-        print("CONSTRUCTORS")
-        print(class_decl.create)
-        print(own)
 
     constructors, own = split_create_features(own, class_decl.create)
     child_table.constructors = constructors

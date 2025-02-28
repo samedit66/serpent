@@ -221,7 +221,7 @@ def annotate_feature_call(
 
         callee_symtab = symtab
 
-    feature_name = mangle_name(name, class_name=callee_symtab.short_type_name)
+    feature_name = mangle_name(name, class_name=callee_symtab.full_type_name)
     if not callee_symtab.has_feature(
             feature_name,
             self_called=typed_owner is None):
@@ -412,7 +412,6 @@ def annotate_create_expr(
 
     expr_type = type_of_class_decl_type(object_type)
     if expr_type.name not in hierarchy:
-        print(expr_type.name)
         raise CompilerError(f"Unknown type '{expr_type.name}'",
                             location=create_expr.location)
 
@@ -443,7 +442,6 @@ def annotate_create_expr(
             f"No constructor feature '{constructor_name}' found",
             location=create_expr.location)
     if not create_object_symtab.is_constructor(constructor_name_mangled):
-        print(99999, create_object_symtab.constructors)
         raise CompilerError(
             f"Feature '{constructor_name}' is not a constructor",
             location=create_expr.location)
@@ -991,7 +989,6 @@ def make_codegen_class(flatten_cls: FlattenClass,
                 flatten_cls,
                 hierarchy)
 
-            print(flatten_cls.class_name, symtab.type_of.name, symtab.type_of.full_name)
             global_class_table.add_class_table(symtab)
         else:
             symtab = global_class_table.get_class_table(class_type.full_name)

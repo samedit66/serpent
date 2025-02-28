@@ -286,17 +286,20 @@ def make_generic_map(
 
 
 def features_of_flatten_class(
-        flatten_cls: FlattenClass) -> tuple[list[FeatureRecord], list[FeatureRecord]]:
+        flatten_cls: FlattenClass,
+        actual_type: ClassType) -> tuple[list[FeatureRecord], list[FeatureRecord]]:
+    typ = type_of_class_decl_type(actual_type)
+
     precursors = [
-        copy.replace(f, name=f"Precursor_{f.from_class}_{f.name}")
+        copy.replace(f, name=f"Precursor_{typ.full_name}_{f.name}")
         for f in flatten_cls.precursors
     ]
     inherited = [
-        copy.replace(f, name=f"{flatten_cls.class_name}_{f.name}")
+        copy.replace(f, name=f"{typ.full_name}_{f.name}")
         for f in flatten_cls.inherited
     ]
     own = [
-        copy.replace(f, name=f"{f.from_class}_{f.name}")
+        copy.replace(f, name=f"{typ.full_name}_{f.name}")
         for f in flatten_cls.own + flatten_cls.constructors
     ]
 
@@ -310,15 +313,6 @@ def features_of_flatten_class(
             + flatten_cls.selected
             + flatten_cls.inherited)
     ])
-
-    if flatten_cls.class_name == "D":
-        print("Explicit:")
-        for f in explicit: print(f.from_class, f.name)
-
-        print()
-
-        print("Implicit:")
-        for f in implicit: print(f.from_class, f.name, f.node)
 
     return explicit, implicit
 
@@ -381,7 +375,6 @@ def guess_type(
             if name in generic_map:
                 return generic_map[name]
             elif name not in hierarchy:
-                print("guess_type", name)
                 raise CompilerError(
                     f"Unknown type '{name}'",
                     location=location)
@@ -416,7 +409,7 @@ def make_class_symtab(
     # у объекта class_type_decl
     # implicit - фичи, которые неявно должны быть у класса,
     # для того чтобы он корректно работал (precursors, renamed, ...)
-    explicit, implicit = features_of_flatten_class(flatten_cls)
+    explicit, implicit = features_of_flatten_class(flatten_cls, actuals)
     constructors = constructors_of(flatten_cls)
     class_interface = [feature.name for feature in explicit]
     feature_clients_map = {}
