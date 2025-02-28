@@ -730,6 +730,12 @@ def annotate_create_stmt(create_stmt: CreateStmt,
                 class_name=symtab.full_type_name)
             create_object_type = symtab.type_of_feature(
                 feature_name, self_called=True) # Почему True? Не знаю, на всякий случай...
+            
+            if not symtab.is_field(feature_name, self_called=True):
+                raise CompilerError(
+                    f"Ensure '{constructor_call.object_name}' is correctly declared as a local variable or "
+                    f"class field in '{symtab.full_type_name}'"
+                )
 
         if not global_class_table.has_class_table(
                 create_object_type.full_name):
