@@ -46,7 +46,7 @@ def make_general_constructor(fields: Iterable[TField]) -> TMethod:
         )
 
     return TUserDefinedMethod(
-        method_name="<init>",
+        method_name="<set_default_values>",
         parameters=[],
         return_type=Type("<VOID>"),
         is_constructor=True,

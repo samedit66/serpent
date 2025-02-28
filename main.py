@@ -23,26 +23,69 @@ end
 
 class TEST
 feature
-    Name: STRING = "Дмитрий"
-
-    print (s: STRING) do end
-
-    t do
-        print (Name)
+    t: INTEGER
+    local
+        x: INTEGER
+    do
+        x := (2 + 2) - (4 * 7) / 10
     end
-
-    x: ARRAY[INTEGER]
 end
+
 
 class ARRAY [E]
 feature
     some: E
     item (index: INTEGER): E do end
+    put (element: E; index: INTEGER) do end
 end
 
-class INTEGER end
+class INTEGER
+feature
+    plus (other: like Current): like Current do end
+
+    minus (other: like Current): like Current do end
+
+    product (other: like Current): like Current do end
+
+    division (other: like Current): like Current do end
+
+    is_less (other: like Current): BOOLEAN do end
+
+    is_equal (other: like Current): BOOLEAN do end
+end
+
+class PERSON
+create
+    make
+feature
+    age: INTEGER
+    name: STRING
+feature
+    make (a_name: STRING; a_age: INTEGER)
+    do
+        age := a_age
+        name := a_name
+    end
+
+    calculate: INTEGER
+    do
+        Result := 1 + 2 - 10 + Result
+
+        if Result < 10 then
+            Result := 4
+        elseif Result = 254 then
+            Result := 8 + 1
+        else
+            Result := 10
+        end
+    end
+end
 
 class STRING feature plus (other: like Current): like Current do end end
+
+class REAL end
+
+class BOOLEAN end
 
 class NONE end
 """
@@ -74,9 +117,11 @@ from serpent.tree.type_decl import ClassType
 from serpent.semantic_checker.symtab import GlobalClassTable, make_class_symtab
 from serpent.semantic_checker.type_check import make_codegen_class, check_types
 from serpent.semantic_checker.utils import pretty_print_node
-from serpent.codegen.constant_pool import make_constant_pool
-from serpent.codegen.general_class import make_general_class
-from serpent.codegen.tables import create_class_file
+from serpent.codegen.constant_pool import make_constant_pool, add_package_prefix
+from serpent.codegen.preprocess import make_general_class
+from serpent.codegen.class_file import make_class_file
+from serpent.codegen.genbytecode import generate_bytecode_for_stmts
+
 
 flatten_class_mapping = {fcls.class_name: fcls for fcls in flatten_classes}
 
@@ -88,8 +133,16 @@ if not error_collector.ok():
 from serpent.codegen.constant_pool import *
 
 general_class = make_general_class(tclasses)
-print(pretty_print_node(general_class))
 
-constant_pool0 = make_constant_pool(tclasses[0])
-class_file = create_class_file(tclasses[0], constant_pool0, general_class)
-print(class_file)
+tc = tclasses[3]
+rest_classes = tclasses[:3] + tclasses[4:]
+
+class_file = make_class_file(tc, rest_classes)
+pretty_print_constant_pool(class_file.constant_pool)
+
+class_file_code = class_file.to_bytes()
+with open("PERSON.class", mode="wb") as f:
+    f.write(class_file_code)
+
+with open("PERSON.class", "rb") as f:
+    print(f.read().hex())

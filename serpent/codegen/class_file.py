@@ -12,7 +12,7 @@ from serpent.codegen.constant_pool import (
     get_type_descriptor,
     get_method_descriptor,
     make_constant_pool)
-from serpent.codegen.bytecommand import ByteCommand
+from serpent.codegen.bytecommand import *
 from serpent.codegen.genbytecode import (
     LocalTable,
     bytecode_size,
@@ -260,6 +260,26 @@ class MethodsTable:
 
         method_info = MethodInfo(access_flags, name_index, descriptor_index, code)
         self.methods.append(method_info)
+
+
+def make_default_integer_constructor(constant_pool: ConstantPool) -> MethodInfo:
+    constructor_index = constant_pool.add_methodref(
+        add_package_prefix("INTEGER"), method_name="<init>", method_desc="(I)V")
+
+    general_constructor_index = constant_pool.add_methodref(
+        add_package_prefix("GENERAL"), method_name="<init>", method_desc="(I)V")
+
+    bytecode = [ InvokeSpecial(general_constructor_index) ]
+    code = CodeAttribute(constant_pool.add_constant_utf8("Code"), LocalTable(), bytecode)
+
+    methodref = constant_pool.get_constant(general_constructor_index)
+    nat_index = methodref.name_and_type_index
+    nat = constant_pool.get_constant(nat_index)
+
+    name_index = nat.name_const_index
+    descriptor_index = nat.type_const_index
+
+    return MethodInfo(ACC_PUBLIC, name_index, descriptor_index, code)
 
 
 def make_class_file(
