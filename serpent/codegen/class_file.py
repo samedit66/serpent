@@ -16,7 +16,7 @@ from serpent.codegen.bytecommand import ByteCommand
 from serpent.codegen.genbytecode import (
     LocalTable,
     bytecode_size,
-    generate_bytecode_for_stmts)
+    generate_bytecode_for_method)
 from serpent.codegen.byte_utils import *
 
 
@@ -198,7 +198,10 @@ class CodeAttribute:
 
     @property
     def attribute_length(self) -> int:
-        raise NotImplementedError
+        # Длина атрибута: 2 (max_stack) + 2 (max_locals) + 4 (code_length) +
+        # code_length + 2 (exception_table_length) + 2 (attributes_count) = 12 + code_length
+        attribute_length = 12 + self.code_length
+        return attribute_length
     
     @property
     def max_stack(self) -> int:
@@ -210,7 +213,7 @@ class CodeAttribute:
     
     @property
     def code_length(self) -> int:
-        raise NotImplementedError
+        raise sum(cmd.size() for cmd in self.bytecode)
     
     @property
     def exception_table_length(self) -> int:
@@ -252,22 +255,22 @@ class MethodsTable:
 
         code_name_index = constant_pool.add_constant_utf8("Code")
         local_table = LocalTable()
-        if isinstance(tmethod, TUserDefinedMethod):
-            bytecode = generate_bytecode_for_stmts(
-                tmethod.body, fq_class_name, constant_pool, local_table)
-        else:
-            print("class_file.py: 174 EXTERNAL")
-            bytecode = []
+        bytecode = generate_bytecode_for_method(tmethod, fq_class_name, constant_pool, local_table)
         code = CodeAttribute(code_name_index, local_table, bytecode)
 
         method_info = MethodInfo(access_flags, name_index, descriptor_index, code)
         self.methods.append(method_info)
 
 
-def make_class_file(current_class: TClass, rest_classes: list[TClass], super_class_index: int | None = None) -> ClassFile:
+def make_class_file(
+        current_class: TClass,
+        rest_classes: list[TClass],
+        super_class_index: int | None = None) -> ClassFile:
     constant_pool = make_constant_pool(current_class, rest_classes)
 
-    constant_pool.add_constant_class(add_package_prefix("Object", package="java.lang"))
+    if super_class_index is None:
+        constant_pool.add_constant_class(add_package_prefix("Object", package="java.lang"))
+        super_class_index = 0
 
     fields_table = FieldsTable()
     for field in current_class.fields:
@@ -279,7 +282,6 @@ def make_class_file(current_class: TClass, rest_classes: list[TClass], super_cla
         methods_table.add_method(method, fq_class_name, constant_pool, ACC_PUBLIC)
 
     this_class_index = constant_pool.add_constant_class(fq_class_name)
-    super_class_index = 0 if super_class_index is None else super_class_index
 
     return ClassFile(
         minor_version=0,

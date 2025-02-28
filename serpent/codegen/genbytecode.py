@@ -653,3 +653,27 @@ def generate_bytecode_for_stmts(
                 tstmt, fq_class_name, constant_pool, local_table))
         
     return bytecode
+
+
+def generate_bytecode_for_method(
+        method: TMethod,
+        fq_class_name: str,
+        constant_pool: ConstantPool,
+        local_table: LocalTable)-> list[ByteCommand]:
+    bytecode = []
+
+    if isinstance(method, TUserDefinedMethod):
+        bytecode.extend(
+            generate_bytecode_for_stmts(
+                method.body,
+                fq_class_name,
+                constant_pool,
+                local_table))
+
+        if method.return_type.full_name != "<VOID>":
+            bytecode.append(Aload(local_table["local_Result"]))
+            bytecode.append(Areturn())
+        else:
+            bytecode.append(Return())
+    
+    return bytecode
