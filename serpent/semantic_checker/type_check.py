@@ -412,6 +412,7 @@ def annotate_create_expr(
 
     expr_type = type_of_class_decl_type(object_type)
     if expr_type.name not in hierarchy:
+        print(expr_type.name)
         raise CompilerError(f"Unknown type '{expr_type.name}'",
                             location=create_expr.location)
 
@@ -982,13 +983,18 @@ def make_codegen_class(flatten_cls: FlattenClass,
     if not global_class_table.has_class_table(flatten_cls.class_name):
         actual_type = actual_type or ClassType(
             location=None, name=flatten_cls.class_name)
+        class_type = type_of_class_decl_type(actual_type)
 
-        symtab = make_class_symtab(
-            actual_type,
-            flatten_cls,
-            hierarchy)
+        if not global_class_table.has_class_table(class_type.full_name):
+            symtab = make_class_symtab(
+                actual_type,
+                flatten_cls,
+                hierarchy)
 
-        global_class_table.add_class_table(symtab)
+            print(flatten_cls.class_name, symtab.type_of.name, symtab.type_of.full_name)
+            global_class_table.add_class_table(symtab)
+        else:
+            symtab = global_class_table.get_class_table(class_type.full_name)
     # В ином случае, просто получаем уже созданную таблицу класса
     else:
         symtab = global_class_table.get_class_table(flatten_cls.class_name)

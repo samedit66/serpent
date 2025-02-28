@@ -373,11 +373,15 @@ def guess_type(
         type_decl: TypeDecl,
         class_decl_type: ClassDecl,
         feature_value_type_map: dict[str, Type],
-        hierarchy: ClassHierarchy) -> Type:
+        hierarchy: ClassHierarchy,
+        generic_map: dict[str, Type]) -> Type:
     """Определяет тип параметра или локальной переменной"""
     match type_decl:
         case ClassType(location=location, name=name):
-            if name not in hierarchy:
+            if name in generic_map:
+                return generic_map[name]
+            elif name not in hierarchy:
+                print("guess_type", name)
                 raise CompilerError(
                     f"Unknown type '{name}'",
                     location=location)
@@ -513,7 +517,8 @@ def make_class_symtab(
                 param.value_type,
                 actuals,
                 feature_value_type_map,
-                hierarchy)
+                hierarchy,
+                generic_map)
             typed_parameters.append((param_name, param_type))
 
         signatures[feature_name] = typed_parameters
@@ -541,7 +546,8 @@ def make_class_symtab(
                 var_decl.value_type,
                 actuals,
                 feature_value_type_map,
-                hierarchy)
+                hierarchy,
+                generic_map)
             typed_variables.append((var_name, var_type))
 
         feature_return_type = feature_value_type_map[feature_name]
