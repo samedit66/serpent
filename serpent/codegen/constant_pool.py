@@ -168,7 +168,10 @@ class CONSTANT_Methodref(CONSTANT):
 
 class ConstantPool:
     def __init__(self) -> None:
-        self.constant_pool: list[CONSTANT] = []
+        self.constant_pool: list[CONSTANT] = [None]
+
+    def __iter__(self):
+        return iter(self.constant_pool[1:])
 
     @property
     def constants_count(self) -> int:
@@ -176,7 +179,7 @@ class ConstantPool:
 
     @property
     def next_index(self) -> int:
-        return len(self.constant_pool) + 1
+        return len(self.constant_pool)
 
     def _filter_constants(self, constant_type) -> list[CONSTANT]:
         return [const for const in self.constant_pool if isinstance(const, constant_type)]
@@ -190,6 +193,10 @@ class ConstantPool:
             if predicate(const):
                 return const.index
         return -1
+
+    def get_constant(self, index: int) -> CONSTANT:
+        assert self.constant_pool[index] is not None
+        return self.constant_pool[index]
 
     def add_constant_utf8(self, utf8_text: str) -> int:
         index = self._find_constant(CONSTANT_Utf8, lambda c: c.text == utf8_text)
@@ -266,7 +273,7 @@ class ConstantPool:
         """
         Добавляет или находит Methodref для метода с именем method_name и дескриптором method_desc в классе fq_class_name.
         """
-        methodref_index = self.find_constant_methodref_index(fq_class_name, method_name, method_desc)
+        methodref_index = self.find_constant_methodref(fq_class_name, method_name)
         if methodref_index != -1:
             return methodref_index
 
@@ -282,54 +289,34 @@ class ConstantPool:
         self.constant_pool.append(methodref)
         return methodref.index
 
-    def find_constant_methodref_index(self, fq_class_name: str, method_name: str, method_desc: str) -> int:
-        """
-        Ищет в пуле констант запись Methodref по заданным fq_class_name, method_name и method_desc.
-        """
-        class_index = self.find_constant_class_index(fq_class_name)
-        if class_index == -1:
-            return -1
-        for methodref in self._filter_constants(CONSTANT_Methodref):
-            if methodref.class_index != class_index:
-                continue
-            nat_index = methodref.name_and_type_index
-            for nat in self._filter_constants(CONSTANT_NameAndType):
-                if nat.index != nat_index:
-                    continue
-                actual_name = None
-                actual_desc = None
-                for utf8 in self._filter_constants(CONSTANT_Utf8):
-                    if utf8.index == nat.name_const_index:
-                        actual_name = utf8.text
-                    if utf8.index == nat.type_const_index:
-                        actual_desc = utf8.text
-                if actual_name == method_name and actual_desc == method_desc:
-                    return methodref.index
-        return -1
-
-    def find_constant_fieldref_index(self, fq_class_name: str, field_name: str, field_desc: str) -> int:
-        """
-        Ищет в пуле констант запись Fieldref по заданным fq_class_name, field_name и field_desc.
-        """
-        class_index = self.find_constant_class_index(fq_class_name)
-        if class_index == -1:
-            return -1
+    def find_constant_fieldref(self, fq_class_name: str, field_name: str) -> int:
         for fieldref in self._filter_constants(CONSTANT_Fieldref):
-            if fieldref.class_index != class_index:
-                continue
+            class_index = fieldref.class_index
             nat_index = fieldref.name_and_type_index
-            for nat in self._filter_constants(CONSTANT_NameAndType):
-                if nat.index != nat_index:
-                    continue
-                actual_name = None
-                actual_desc = None
-                for utf8 in self._filter_constants(CONSTANT_Utf8):
-                    if utf8.index == nat.name_const_index:
-                        actual_name = utf8.text
-                    if utf8.index == nat.type_const_index:
-                        actual_desc = utf8.text
-                if actual_name == field_name and actual_desc == field_desc:
-                    return fieldref.index
+    
+            class_const = self.get_constant(class_index)  # Получаем объект CONSTANT_Class
+            nat_const = self.get_constant(nat_index)  # Получаем объект CONSTANT_NameAndType
+    
+            fieldref_class_name = self.get_constant(class_const.name_index).text  # Достаем текстовое имя класса
+            fieldref_field_name = self.get_constant(nat_const.name_const_index).text  # Достаем имя поля
+    
+            if fieldref_class_name == fq_class_name and fieldref_field_name == field_name:
+                return fieldref.index
+        return -1
+    
+    def find_constant_methodref(self, fq_class_name: str, method_name: str) -> int:
+        for methodref in self._filter_constants(CONSTANT_Methodref):  # Исправленный фильтр
+            class_index = methodref.class_index
+            nat_index = methodref.name_and_type_index
+    
+            class_const = self.get_constant(class_index)  # Получаем объект CONSTANT_Class
+            nat_const = self.get_constant(nat_index)  # Получаем объект CONSTANT_NameAndType
+    
+            methodref_class_name = self.get_constant(class_const.name_index).text  # Достаем имя класса
+            methodref_method_name = self.get_constant(nat_const.name_const_index).text  # Достаем имя метода
+    
+            if methodref_class_name == fq_class_name and methodref_method_name == method_name:
+                return methodref.index
         return -1
 
     def find_constant_class_index(self, fq_class_name: str) -> int:
@@ -340,10 +327,6 @@ class ConstantPool:
         return -1
 
     def add_field(self, fq_class_name: str, field: TField) -> int:
-        """
-        Обёртка для добавления ссылки на поле.
-        Использует имя поля (field.name) и его тип (через get_type_descriptor).
-        """
         field_desc = get_type_descriptor(field.expr_type)
         return self.add_fieldref(fq_class_name, field.name, field_desc)
 
@@ -387,16 +370,11 @@ def get_method_descriptor(method: TMethod) -> str:
     return f"({params_desc}){return_desc}"
 
 
-def process_expression_literals(expr: TExpr, constant_pool: ConstantPool) -> None:
-    """
-    Рекурсивно обходит выражение и добавляет в пул констант литералы:
-      - TIntegerConst  -> CONSTANT_Integer
-      - TRealConst     -> CONSTANT_Float
-      - TStringConst   -> CONSTANT_String (через CONSTANT_Utf8)
-      - TCharacterConst-> пока не реализован
-      - TBoolConst     -> представляется как 1/0 (CONSTANT_Integer)
-    Также рекурсивно обрабатываются составные выражения.
-    """
+def process_expression_literals(
+        expr: TExpr,
+        constant_pool: ConstantPool,
+        current_class: TClass,
+        rest_classes: list[TClass]) -> None:
     match expr:
         case TIntegerConst(value=value):
             constant_pool.add_constant_integer(value)
@@ -407,44 +385,73 @@ def process_expression_literals(expr: TExpr, constant_pool: ConstantPool) -> Non
         case TCharacterConst(value=value):
             raise NotImplementedError
         case TBoolConst(value=value):
-            constant_pool.add_constant_integer(int(value))
-        case TFeatureCall(arguments=arguments, owner=owner):
+            # constant_pool.add_constant_integer(int(value))
+            raise NotImplementedError
+        case TFeatureCall(expr_type=expr_type, feature_name=feature_name, arguments=arguments, owner=owner):
+            fq_class_name = add_package_prefix(expr_type.full_name)
+            constant_pool.add_constant_class(fq_class_name)
+
             if owner is not None:
-                process_expression_literals(owner, constant_pool)
+                method = find_method(rest_classes, feature_name)
+                constant_pool.add_method(add_package_prefix(owner.expr_type.full_name), method)
+                process_expression_literals(owner, constant_pool, current_class, rest_classes)
+            else:
+                method = find_method([current_class], feature_name)
+                constant_pool.add_method(add_package_prefix(current_class.class_name), method)
+
             for arg in arguments:
-                process_expression_literals(arg, constant_pool)
-        case TCreateExpr(arguments=arguments):
+                process_expression_literals(arg, constant_pool, current_class, rest_classes)
+        case TCreateExpr(expr_type=expr_type, constructor_name=constructor_name, arguments=arguments):
+            fq_class_name = add_package_prefix(expr_type.full_name)
+            constant_pool.add_constant_class(fq_class_name)
+
+            method = find_method([current_class] + rest_classes, constructor_name)
+            constant_pool.add_method(method)
+
             for arg in arguments:
-                process_expression_literals(arg, constant_pool)
+                process_expression_literals(arg, constant_pool, current_class, rest_classes)
         case TBinaryOp(left=left, right=right):
-            process_expression_literals(left, constant_pool)
-            process_expression_literals(right, constant_pool)
+            process_expression_literals(left, constant_pool, current_class, rest_classes)
+            process_expression_literals(right, constant_pool, current_class, rest_classes)
         case TUnaryOp(argument=argument):
-            process_expression_literals(argument, constant_pool)
+            process_expression_literals(argument, constant_pool, current_class, rest_classes)
     # Для TVariable и TVoidConst ничего не делаем.
 
 
-def process_statement_literals(stmt: TStatement, constant_pool: ConstantPool) -> None:
-    """
-    Рекурсивно обходит оператор и обрабатывает все входящие в него выражения.
-    """
+def process_statement_literals(
+        stmt: TStatement,
+        constant_pool: ConstantPool,
+        current_class: TClass,
+        rest_classes: list[TClass]) -> None:
     match stmt:
         case TAssignment(lvalue=lvalue, rvalue=rvalue):
-            process_expression_literals(lvalue, constant_pool)
-            process_expression_literals(rvalue, constant_pool)
+            process_expression_literals(lvalue, constant_pool, current_class, rest_classes)
+            process_expression_literals(rvalue, constant_pool, current_class, rest_classes)
         case TIfStmt(
                 condition=condition,
                 then_branch=then_branch,
                 else_branch=else_branch,
                 elseif_branches=elseif_branches):
-            process_expression_literals(condition, constant_pool)
+            process_expression_literals(condition, constant_pool, current_class, rest_classes)
             for s in then_branch:
-                process_statement_literals(s, constant_pool)
+                process_statement_literals(s, constant_pool, current_class, rest_classes)
             for s in else_branch:
-                process_statement_literals(s, constant_pool)
+                process_statement_literals(s, constant_pool, current_class, rest_classes)
             for cond, stmts in elseif_branches:
-                process_expression_literals(cond, constant_pool)
-                for s in stmts: process_statement_literals(s, constant_pool)
+                process_expression_literals(cond, constant_pool, current_class, rest_classes)
+                for s in stmts: process_statement_literals(s, constant_pool, current_class, rest_classes)
+        case TLoopStmt(
+                init_smtmts=init_stmts,
+                until_cond=until_cond,
+                body=body):
+            for s in init_stmts:
+                process_statement_literals(s, constant_pool, current_class, rest_classes)
+            process_expression_literals(until_cond, constant_pool, current_class, rest_classes)
+            for s in body:
+                process_statement_literals(s, constant_pool)
+        case TRoutineCall(feature_call=feature_call):
+            process_expression_literals(feature_call, constant_pool, current_class, rest_classes)
+        case _: assert False
 
 
 def get_external_method_descriptor(method: TExternalMethod) -> str:
@@ -498,7 +505,23 @@ def process_external_method(constant_pool: ConstantPool, method: TExternalMethod
     constant_pool.constant_pool.append(methodref)
 
 
-def make_constant_pool(tclass: TClass) -> ConstantPool:
+def find_method(classes: list[TClass], method_name: str) -> TMethod:
+    for cls in classes:
+        for method in cls.methods:
+            if method.method_name == method_name:
+                return method
+    assert False
+
+
+def find_field(classes: list[TClass], field_name: str) -> TField:
+    for cls in classes:
+        for field in cls.fields:
+            if field.name == field_name:
+                return field
+    assert False
+
+
+def make_constant_pool(tclass: TClass, rest_classes: list[TClass]) -> ConstantPool:
     """
     Формирует Constant Pool для заданного класса tclass. В пул добавляются:
       - Константа для полного имени класса.
@@ -533,7 +556,7 @@ def make_constant_pool(tclass: TClass) -> ConstantPool:
 
             constant_pool.add_method(fq_class_name, method)
             for stmt in method.body:
-                process_statement_literals(stmt, constant_pool)
+                process_statement_literals(stmt, constant_pool, tclass, rest_classes)
 
     return constant_pool
 
@@ -541,7 +564,7 @@ def make_constant_pool(tclass: TClass) -> ConstantPool:
 def pretty_print_constant_pool(pool: ConstantPool) -> None:
     print("Constant Pool:")
     print("-" * 40)
-    for const in pool.constant_pool:
+    for const in pool:
         if isinstance(const, CONSTANT_Utf8):
             print(f"{const.index:3}: CONSTANT_Utf8       : '{const.text}'")
         elif isinstance(const, CONSTANT_Integer): 

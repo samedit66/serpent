@@ -73,9 +73,31 @@ class FieldsTable:
 
 
 @dataclass(frozen=True)
+class LocalTable:
+    variables: list[tuple[str, int]] = field(default_factory=list)
+
+    @property
+    def count(self) -> int:
+        return len(self.variables) + 1
+
+    def __getitem__(self, variable_name: str) -> int:
+        index = -1
+        for v, i in self.variables:
+            if v == variable_name:
+                index = i
+
+        if index == -1:
+            index = self.count
+            self.variables.append((variable_name, index))
+
+        return index
+
+
+@dataclass(frozen=True)
 class CodeAttribute:
     attribute_name_index: int
-    
+    local_table: LocalTable
+
     @property
     def attribute_length(self) -> int:
         raise NotImplementedError
@@ -86,7 +108,7 @@ class CodeAttribute:
     
     @property
     def max_locals(self) -> int:
-        raise NotImplementedError
+        raise self.local_table.count
     
     @property
     def code_length(self) -> int:

@@ -53,6 +53,10 @@ def make_general_constructor(fields: Iterable[TField]) -> TMethod:
         body=assignments)
 
 
+def make_builtin_type_constructor() -> TMethod:
+    ...
+
+
 def make_general_class(classes: list[TClass]) -> TClass:
     """
     Создаёт общий класс GENERAL, объединяя все методы и поля из списка классов.

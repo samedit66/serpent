@@ -14,8 +14,22 @@ class ByteCommand(ABC):
     @abstractmethod
     def to_bytes(self) -> bytes: ...
 
+    def size(self) -> int:
+        return len(self.to_bytes())
+
 
 # 1. Команды загрузки констант
+@dataclass(frozen=True)
+class Aconst_null:
+    
+    @cached_property
+    def tag(self) -> int:
+        return 0x1
+    
+    def to_bytes(self) -> bytes:
+        return u1(self.tag)
+
+
 @dataclass(frozen=True)
 class Iconst_i(ByteCommand):
     i: int
