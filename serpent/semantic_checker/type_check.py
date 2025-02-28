@@ -721,8 +721,15 @@ def annotate_create_stmt(create_stmt: CreateStmt,
 
     if create_stmt.object_type is None:
         local_name = mangle_name(constructor_call.object_name)
-        create_object_type = symtab.type_of_local(
-            context_method_name, local_name)
+        if symtab.has_local(context_method_name, local_name):
+            create_object_type = symtab.type_of_local(
+                context_method_name, local_name)
+        else:
+            feature_name = mangle_name(
+                constructor_call.object_name,
+                class_name=symtab.full_type_name)
+            create_object_type = symtab.type_of_feature(
+                feature_name, self_called=True) # Почему True? Не знаю, на всякий случай...
 
         if not global_class_table.has_class_table(
                 create_object_type.full_name):
@@ -1051,16 +1058,6 @@ def make_codegen_class(flatten_cls: FlattenClass,
         else:
             assert False, (f"Unexpected feature type '{
                 type(feature_node).__name__}' encountered for feature '{feature_name}'")
-
-    # Добвляем конструктор по умолчанию
-    methods.append(
-        TUserDefinedMethod(
-            method_name="<init>",
-            parameters=[],
-            return_type=Type("<VOID>"),
-            is_constructor=True,
-            variables=[],
-            body=[]))
 
     return TClass(symtab.full_type_name, methods, fields)
 
