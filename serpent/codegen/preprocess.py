@@ -32,6 +32,7 @@ def default_value_for(typ: Type) -> TExpr:
             value = TCharacterConst(typ, "")
         case _:
             value = TVoidConst(typ)
+    return value
 
 
 def make_general_constructor(fields: Iterable[TField]) -> TMethod:

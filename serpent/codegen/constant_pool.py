@@ -174,12 +174,17 @@ class ConstantPool:
         return iter(self.constant_pool[1:])
 
     @property
-    def constants_count(self) -> int:
+    def next_index(self) -> int:
         return len(self.constant_pool)
 
     @property
-    def next_index(self) -> int:
+    def count(self) -> int:
+        # Для совместимости с использованием в ClassFile
         return len(self.constant_pool)
+
+    def to_bytes(self) -> bytes:
+        # Объединяем байтовые представления всех констант, начиная с индекса 1
+        return merge_bytes(*(constant.to_bytes() for constant in self.constant_pool[1:]))
 
     def _filter_constants(self, constant_type) -> list[CONSTANT]:
         return [const for const in self.constant_pool if isinstance(const, constant_type)]
@@ -293,13 +298,13 @@ class ConstantPool:
         for fieldref in self._filter_constants(CONSTANT_Fieldref):
             class_index = fieldref.class_index
             nat_index = fieldref.name_and_type_index
-    
+
             class_const = self.get_constant(class_index)  # Получаем объект CONSTANT_Class
             nat_const = self.get_constant(nat_index)  # Получаем объект CONSTANT_NameAndType
-    
+
             fieldref_class_name = self.get_constant(class_const.name_index).text  # Достаем текстовое имя класса
             fieldref_field_name = self.get_constant(nat_const.name_const_index).text  # Достаем имя поля
-    
+
             if fieldref_class_name == fq_class_name and fieldref_field_name == field_name:
                 return fieldref.index
         return -1
@@ -325,6 +330,13 @@ class ConstantPool:
                 if utf8_const.index == const.name_index and utf8_const.text == fq_class_name:
                     return const.index
         return -1
+
+    def find_constant_string_index(self, utf8_text: str) -> int:
+        for const_string in self._filter_constants(CONSTANT_String):
+            utf8_const = self.get_constant(const_string.string_index)
+            if utf8_const.text == utf8_text:
+                return const_string.index
+        return -1 
 
     def add_field(self, fq_class_name: str, field: TField) -> int:
         field_desc = get_type_descriptor(field.expr_type)
