@@ -20,8 +20,8 @@ from serpent.codegen.genbytecode import (
 from serpent.codegen.byte_utils import *
 
 
-ACC_PUBLIC = 0x01
-ACC_SUPER = 0x02
+ACC_PUBLIC = 0x0001
+ACC_SUPER = 0x0020
 
 
 @dataclass(frozen=True)
