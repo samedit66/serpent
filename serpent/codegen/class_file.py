@@ -6,7 +6,7 @@ from serpent.semantic_checker.type_check import (
     TMethod,
     TUserDefinedMethod,
     TField)
-from serpent.codegen.constant_pool import (
+from serpent.codegen.constpool import (
     ConstPool,
     add_package_prefix,
     get_type_descriptor,
@@ -177,7 +177,7 @@ class FieldsTable:
 
     def add_field(self,
                   tfield: TField,
-                  constant_pool: ConstantPool,
+                  constant_pool: ConstPool,
                   access_flags: int = ACC_PUBLIC) -> None:
         name_index = constant_pool.add_constant_utf8(tfield.name)
         descriptor = get_type_descriptor(tfield.expr_type)
