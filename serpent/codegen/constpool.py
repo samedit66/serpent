@@ -1,6 +1,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import struct
+
+from serpent.codegen.byte_utils import *
 
 
 class ConstantNotFoundError(Exception): ...
@@ -18,6 +21,9 @@ class ConstPool:
     constants: list[CONSTANT]
     """Список всех констант для данного класса"""
 
+    def __post_init__(self) -> None:
+        self.add_class(self.fq_class_name)
+
     def to_bytes(self) -> bytes:
         """Возвращает таблицу констант непосредственно в виде байтов"""
         return b"".join(const.to_bytes() for const in self.constants)
@@ -27,114 +33,148 @@ class ConstPool:
         """Индекс следующей добавляемой константы"""
         return len(self.constants) + 1
     
-    def find_methodref(self, method_name: str) -> int:
+    def get_by_index(self, index: int) -> CONSTANT:
+        """Возвращает константу по ее индексу в таблице"""
+        return self.constants[index]
+
+    def find_constant(self, predicate) -> CONSTANT | None:
+        """Возвращает первую константу, удовлетворяющую предикату"""
+        for constant in self.constants:
+            if predicate(constant):
+                return constant
+        return None
+
+    def find_methodref(self, method_name: str, fq_class_name: str | None = None) -> int:
         """Ищет номер константы Methodref с заданным именем метода"""
-        utf8_const_index = -1
-        for constant in self.constants:
-            if isinstance(constant, CONSTANT_Utf8) and constant.text == method_name:
-                utf8_const_index = constant.index
-                break
-        assert utf8_const_index != -1, method_name
+        fq_class_name = fq_class_name or self.fq_class_name
 
-        nat_const_index = -1
-        for constant in self.constants:
-            if (isinstance(constant, CONSTANT_NameAndType)
-                    and constant.name_const_index == utf8_const_index):
-                nat_const_index = constant.index
-                break
-        assert nat_const_index != -1, method_name
+        methodref = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Methodref)
+                and c.method_name == method_name
+                and self.get_by_index(c.class_index).class_name == fq_class_name)
+        assert methodref is not None, f"{fq_class_name}: {method_name}"
 
-        methodref_index = -1
-        for constant in self.constants:
-            if (isinstance(constant, CONSTANT_Methodref) 
-                    and constant.name_and_type_index == nat_const_index):
-                methodref_index = constant.index
-                break
-        assert methodref_index != -1, method_name
-
-        return methodref_index
+        return methodref.index
     
-    def find_fieldref(self, field_name: str) -> int:
-        """Ищет номер константы Fieldref с заданным именем поля"""
-        utf8_const_index = -1
-        for constant in self.constants:
-            if isinstance(constant, CONSTANT_Utf8) and constant.text == field_name:
-                utf8_const_index = constant.index
-                break
-        assert utf8_const_index != -1, field_name
+    def find_fieldref(self, field_name: str, fq_class_name: str | None = None) -> int:
+        """Ищет номер константы Fieldref с заданным именем метода"""
+        fq_class_name = fq_class_name or self.fq_class_name
 
-        nat_const_index = -1
-        for constant in self.constants:
-            if (isinstance(constant, CONSTANT_NameAndType)
-                    and constant.name_const_index == utf8_const_index):
-                nat_const_index = constant.index
-                break
-        assert nat_const_index != -1, field_name
+        fieldref = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Fieldref)
+                and c.field_name == field_name
+                and self.get_by_index(c.class_index).class_name == fq_class_name)
+        assert fieldref is not None, f"{fq_class_name}: {field_name}"
 
-        fieldref_index = -1
-        for constant in self.constants:
-            if (isinstance(constant, CONSTANT_Fieldref)
-                    and constant.name_and_type_index == nat_const_index):
-                fieldref_index = constant.index
-                break
-        assert fieldref_index != -1, field_name
+        return fieldref.index
 
-        return fieldref_index
+    def add_methodref(
+            self,
+            method_name: str,
+            desc: str,
+            fq_class_name: str | None = None) -> int:
+        try:
+            methodref_index = self.find_methodref(method_name, fq_class_name)
+            return methodref_index
+        except AssertionError:
+            class_index = self.add_class(fq_class_name)
+            nat_index = self.add_name_and_type(method_name, desc)
+            methodref = CONSTANT_Methodref(
+                self.next_index, class_index, nat_index)
+            self.constants.append(methodref)
+            return methodref.index
 
-    def add_methodref(self, method_name: str, desc: str) -> int:
-        ...
+    def add_fieldref(
+            self,
+            field_name: str,
+            desc: str,
+            fq_class_name: str | None = None) -> int:
+        try:
+            fieldref_index = self.find_fieldref(field_name, fq_class_name)
+            return fieldref_index
+        except AssertionError:
+            class_index = self.add_class(fq_class_name)
+            nat_index = self.add_name_and_type(field_name, desc)
+            fieldref = CONSTANT_Fieldref(
+                self.next_index, class_index, nat_index)
+            self.constants.append(fieldref)
+            return fieldref.index
 
-    def add_fieldref(self, field_name: str, desc: str) -> int:
-        ...
-
-    def add_name_and_type(self) -> int:
-        ...
+    def add_name_and_type(self, name: str, type: str) -> int:
+        nat = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_NameAndType)
+                and c.name == name
+                and c.type == type)
+        
+        if nat is None:
+            name_index = self.add_utf8(name)
+            type_index = self.add_utf8(type)
+            nat = CONSTANT_NameAndType(
+                self.next_index, name, type, name_index, type_index)
+            self.constants.append(nat)
+            
+        return nat.index
 
     def add_class(self, class_name: str) -> int:
-        utf8_index = self.add_utf8(class_name)
-        class_index = -1
-        for const in self.constants:
-            if isinstance(const, CONSTANT_Class) and const.name_index == utf8_index:
-                class_index = const.index
-                break
-        
-        if class_index == -1:
-            const = CONSTANT_Class(self.next_index, utf8_index)
-            class_index = const.index
+        class_const = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Class)
+                and c.class_name == class_name)
 
-        return class_index
+        if class_const is None:
+            name_index = self.add_utf8(class_name)
+            class_const = CONSTANT_Class(
+                self.next_index, class_name, name_index)
+            self.constants.append(class_const)
+            
+        return class_const.index
 
     def add_utf8(self, text: str) -> int:
-        utf8_index = -1
-        for const in self.constants:
-            if isinstance(const, CONSTANT_Utf8) and const.text == text:
-                utf8_index = const.index
-                break
+        utf8_const = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Utf8)
+                and c.text == text)
 
-        if utf8_index == -1:
-            const = CONSTANT_Utf8(self.next_index, text)
-            utf8_index = const.index
+        if utf8_const is not None:
+            utf8_const = CONSTANT_Utf8(self.next_index, text)
+            self.constants.append(utf8_const)
 
-        return utf8_index
+        return utf8_const.index
 
     def add_string(self, text: str) -> int:
-        utf8_index = -1
-        for const in self.constants:
-            if isinstance(const, CONSTANT_Utf8) and const.text == text:
-                utf8_index = const.index
-                break
+        string_const = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_String)
+                and c.text == text)
 
-        if utf8_index == -1:
-            const = CONSTANT_Utf8(self.next_index, text)
-            utf8_index = const.index
-
-        return utf8_index
+        if string_const is not None:
+            string_index = self.add_utf8(text)
+            string_const = CONSTANT_String(
+                self.next_index, text, string_index)
+            self.constants.append(string_const)
+            
+        return string_const.index
 
     def add_integer(self, value: int) -> int:
-        ...
+        integer_const = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Integer)
+                and c.const == value)
+
+        if integer_const is not None:
+            integer_const = CONSTANT_Integer(
+                self.next_index, value)
+            self.constants.append(integer_const)
+            
+        return integer_const.index
 
     def add_float(self, value: float) -> int:
-        ...
+        float_const = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Float)
+                and c.const == value)
+
+        if float_const is not None:
+            float_const = CONSTANT_Float(
+                self.next_index, value)
+            self.constants.append(float_const)
+            
+        return float_const.index
         
 
 @dataclass(frozen=True)
@@ -189,6 +229,7 @@ class CONSTANT_Float(CONSTANT):
 
 @dataclass(frozen=True)
 class CONSTANT_String(CONSTANT):
+    text: str
     string_index: int
 
     @property
@@ -201,6 +242,8 @@ class CONSTANT_String(CONSTANT):
 
 @dataclass(frozen=True)
 class CONSTANT_NameAndType(CONSTANT):
+    name: str
+    type: str
     name_const_index: int
     type_const_index: int
 
@@ -214,6 +257,7 @@ class CONSTANT_NameAndType(CONSTANT):
 
 @dataclass(frozen=True)
 class CONSTANT_Class(CONSTANT):
+    class_name: str
     name_index: int
 
     @property
@@ -226,6 +270,8 @@ class CONSTANT_Class(CONSTANT):
 
 @dataclass(frozen=True)
 class CONSTANT_Fieldref(CONSTANT):
+    field_name: str
+    type: str
     class_index: int
     name_and_type_index: int
 
@@ -239,6 +285,8 @@ class CONSTANT_Fieldref(CONSTANT):
 
 @dataclass(frozen=True)
 class CONSTANT_Methodref(CONSTANT):
+    method_name: str
+    type: str
     class_index: int
     name_and_type_index: int
 
@@ -248,5 +296,3 @@ class CONSTANT_Methodref(CONSTANT):
 
     def to_bytes(self) -> bytes:
         return merge_bytes(u1(self.tag), u2(self.class_index), u2(self.name_and_type_index))
-
-
