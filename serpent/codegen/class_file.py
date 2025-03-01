@@ -7,11 +7,11 @@ from serpent.semantic_checker.type_check import (
     TUserDefinedMethod,
     TField)
 from serpent.codegen.constant_pool import (
-    ConstantPool,
+    ConstPool,
     add_package_prefix,
     get_type_descriptor,
     get_method_descriptor,
-    make_constant_pool)
+    make_const_pool)
 from serpent.codegen.bytecommand import *
 from serpent.codegen.genbytecode import (
     LocalTable,
@@ -28,7 +28,7 @@ ACC_SUPER = 0x0020
 class ClassFile:
     minor_version: int
     major_version: int
-    constant_pool: ConstantPool
+    constant_pool: ConstPool
     access_flags: int
     this_class: int
     super_class: int
@@ -40,8 +40,8 @@ class ClassFile:
         return 0xcafebabe
 
     @property
-    def constant_pool_count(self) -> int:
-        return self.constant_pool.count
+    def cp_count_plus_one(self) -> int:
+        return self.constant_pool.count + 1
     
     @property
     def interfaces_count(self) -> int:
@@ -146,7 +146,7 @@ class ClassFile:
             u4(self.magic),
             u2(self.minor_version),
             u2(self.major_version),
-            u2(self.constant_pool_count),
+            u2(self.cp_count_plus_one),
             cp_bytes,
             u2(self.access_flags),
             u2(self.this_class),
@@ -247,13 +247,13 @@ class MethodsTable:
     def add_method(self,
                    tmethod: TMethod,
                    fq_class_name: str,
-                   constant_pool: ConstantPool,
+                   constant_pool: ConstPool,
                    access_flags: int = ACC_PUBLIC) -> None:
-        name_index = constant_pool.add_constant_utf8(tmethod.method_name)
-        descriptor = get_method_descriptor(tmethod)
-        descriptor_index = constant_pool.add_constant_utf8(descriptor)
+        name_index = constant_pool.add_utf8(tmethod.method_name)
+        descriptor = get_method_descriptor([typ for (_, typ) in tmethod.parameters], tmethod.return_type)
+        descriptor_index = constant_pool.add_utf8(descriptor)
 
-        code_name_index = constant_pool.add_constant_utf8("Code")
+        code_name_index = constant_pool.add_utf8("Code")
         local_table = LocalTable()
         bytecode = generate_bytecode_for_method(tmethod, fq_class_name, constant_pool, local_table)
         code = CodeAttribute(code_name_index, local_table, bytecode)
@@ -262,15 +262,19 @@ class MethodsTable:
         self.methods.append(method_info)
 
 
-def make_default_integer_constructor(constant_pool: ConstantPool) -> MethodInfo:
+def make_default_integer_constructor(constant_pool: ConstPool) -> MethodInfo:
     constructor_index = constant_pool.add_methodref(
-        add_package_prefix("INTEGER"), method_name="<init>", method_desc="(I)V")
+        method_name="<init>",
+        method_desc="(I)V",
+        fq_class_name=add_package_prefix("INTEGER"))
 
     general_constructor_index = constant_pool.add_methodref(
-        add_package_prefix("GENERAL"), method_name="<init>", method_desc="(I)V")
+        method_name="<init>",
+        method_desc="(I)V",
+        fq_class_name=add_package_prefix("GENERAL"))
 
     bytecode = [ InvokeSpecial(general_constructor_index) ]
-    code = CodeAttribute(constant_pool.add_constant_utf8("Code"), LocalTable(), bytecode)
+    code = CodeAttribute(constant_pool.add_utf8("Code"), LocalTable(), bytecode)
 
     methodref = constant_pool.get_constant(general_constructor_index)
     nat_index = methodref.name_and_type_index
@@ -286,10 +290,10 @@ def make_class_file(
         current_class: TClass,
         rest_classes: list[TClass],
         super_class_index: int | None = None) -> ClassFile:
-    constant_pool = make_constant_pool(current_class, rest_classes)
+    constant_pool = make_const_pool(current_class, rest_classes)
 
     if super_class_index is None:
-        constant_pool.add_constant_class(add_package_prefix("Object", package="java.lang"))
+        constant_pool.add_class(add_package_prefix("Object", package="java.lang"))
         super_class_index = 0
 
     fields_table = FieldsTable()
@@ -301,7 +305,7 @@ def make_class_file(
     for method in current_class.methods:
         methods_table.add_method(method, fq_class_name, constant_pool, ACC_PUBLIC)
 
-    this_class_index = constant_pool.add_constant_class(fq_class_name)
+    this_class_index = constant_pool.add_class(fq_class_name)
 
     return ClassFile(
         minor_version=0,

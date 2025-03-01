@@ -1,12 +1,13 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import struct
+from typing import Iterable
 
 from serpent.errors import CompilerError
 from serpent.semantic_checker.symtab import Type
 from serpent.semantic_checker.type_check import *
 from serpent.codegen.byte_utils import *
-from serpent.codegen.constpool import *
 
 
 DEFAULT_PACKAGE = "com.eiffel.base"
@@ -30,6 +31,360 @@ COMPILER_NAME = "serpent"
 """Имя компилятора, используется в отладочных целях при печати
 сообщений об ошибках
 """
+
+
+@dataclass(frozen=True)
+class ConstPool:
+    """Таблица констант для конкретного класса Eiffel.
+    Особенность данной таблицы (а точнее особенность методов поиска констант)
+    заключается в отсутствии перегружаемых методов -- т.е. у каждого метода
+    уникальное имя, за счет этого поиск Methodref осуществляется проще
+    """
+    fq_class_name: str
+    """Полное квалифицированное имя класса, для которого составляется таблица"""
+    constants: list[CONSTANT] = field(default_factory=list)
+    """Список всех констант, которые встречаются в теле класса"""
+
+    def __post_init__(self) -> None:
+        self.add_class(self.fq_class_name)
+
+    def __iter__(self) -> Iterable[CONSTANT]:
+        return iter(self.constants)
+
+    def to_bytes(self) -> bytes:
+        """Возвращает таблицу констант непосредственно в виде байтов"""
+        return b"".join(const.to_bytes() for const in self.constants)
+    
+    @property
+    def count(self) -> int:
+        return len(self.constants)
+
+    @property
+    def next_index(self) -> int:
+        """Индекс следующей добавляемой константы"""
+        return len(self.constants) + 1
+    
+    def get_by_index(self, index: int) -> CONSTANT:
+        """Возвращает константу по ее индексу в таблице"""
+        return self.constants[index]
+
+    def find_constant(self, predicate) -> CONSTANT | None:
+        """Возвращает первую константу, удовлетворяющую предикату"""
+        for constant in self.constants:
+            if predicate(constant):
+                return constant
+        return None
+
+    def find_methodref(self, method_name: str, fq_class_name: str | None = None) -> int:
+        """Ищет номер константы Methodref с заданным именем метода"""
+        fq_class_name = fq_class_name or self.fq_class_name
+
+        methodref = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Methodref)
+                and c.method_name == method_name
+                and self.get_by_index(c.class_index).text == fq_class_name)
+        assert methodref is not None, f"{fq_class_name}: {method_name}"
+
+        return methodref.index
+    
+    def find_fieldref(self, field_name: str, fq_class_name: str | None = None) -> int:
+        """Ищет номер константы Fieldref с заданным именем метода"""
+        fq_class_name = fq_class_name or self.fq_class_name
+
+        fieldref = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Fieldref)
+                and c.field_name == field_name
+                and self.get_by_index(c.class_index).text == fq_class_name)
+        assert fieldref is not None, f"{fq_class_name}: {field_name}"
+
+        return fieldref.index
+
+    def add_methodref(
+            self,
+            method_name: str,
+            desc: str,
+            fq_class_name: str | None = None) -> int:
+        try:
+            methodref_index = self.find_methodref(method_name, fq_class_name)
+            return methodref_index
+        except AssertionError:
+            class_index = self.add_class(fq_class_name)
+            nat_index = self.add_name_and_type(method_name, desc)
+            methodref = CONSTANT_Methodref(
+                self.next_index,
+                method_name,
+                desc,
+                class_index,
+                nat_index)
+            self.constants.append(methodref)
+            return methodref.index
+
+    def add_fieldref(
+            self,
+            field_name: str,
+            desc: str,
+            fq_class_name: str | None = None) -> int:
+        try:
+            fieldref_index = self.find_fieldref(field_name, fq_class_name)
+            return fieldref_index
+        except AssertionError:
+            class_index = self.add_class(fq_class_name)
+            nat_index = self.add_name_and_type(field_name, desc)
+            fieldref = CONSTANT_Fieldref(
+                self.next_index,
+                field_name,
+                desc,
+                class_index,
+                nat_index)
+            self.constants.append(fieldref)
+            return fieldref.index
+
+    def add_name_and_type(self, name: str, type: str) -> int:
+        nat = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_NameAndType)
+                and c.name == name
+                and c.type == type)
+        
+        if nat is None:
+            name_index = self.add_utf8(name)
+            type_index = self.add_utf8(type)
+            nat = CONSTANT_NameAndType(
+                self.next_index, name, type, name_index, type_index)
+            self.constants.append(nat)
+            
+        return nat.index
+
+    def add_class(self, class_name: str) -> int:
+        class_const = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Class)
+                and c.class_name == class_name)
+
+        if class_const is None:
+            name_index = self.add_utf8(class_name)
+            class_const = CONSTANT_Class(
+                self.next_index, class_name, name_index)
+            self.constants.append(class_const)
+            
+        return class_const.index
+
+    def add_utf8(self, text: str) -> int:
+        utf8_const = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Utf8)
+                and c.text == text)
+
+        if utf8_const is None:
+            utf8_const = CONSTANT_Utf8(self.next_index, text)
+            self.constants.append(utf8_const)
+
+        return utf8_const.index
+
+    def add_string(self, text: str) -> int:
+        string_const = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_String)
+                and c.text == text)
+
+        if string_const is not None:
+            string_index = self.add_utf8(text)
+            string_const = CONSTANT_String(
+                self.next_index, text, string_index)
+            self.constants.append(string_const)
+            
+        return string_const.index
+
+    def add_integer(self, value: int) -> int:
+        integer_const = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Integer)
+                and c.const == value)
+
+        if integer_const is not None:
+            integer_const = CONSTANT_Integer(
+                self.next_index, value)
+            self.constants.append(integer_const)
+            
+        return integer_const.index
+
+    def add_float(self, value: float) -> int:
+        float_const = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Float)
+                and c.const == value)
+
+        if float_const is not None:
+            float_const = CONSTANT_Float(
+                self.next_index, value)
+            self.constants.append(float_const)
+            
+        return float_const.index
+        
+
+def make_const_pool(current: TClass, rest: list[TClass]) -> ConstPool:
+    """Создает таблицу констант для current класса.
+    Делает это неэффэективным, но простым способом: для гарантии того,
+    что любой встреченный метод уже был определен в каком-то из классов,
+    запихивает в таблицу констант каждого класса все константы (поля и методы)
+    из всех других классов
+    """
+    pool = ConstPool(
+        fq_class_name=add_package_prefix(
+            current.class_name))
+
+    # Заполняем пулл констант всеми полями и методами
+    # всех классов в системе (включая тот, для которого
+    # составляется таблица констант)
+    for class_ in rest + [current]:
+        fq_class_name = add_package_prefix(class_.class_name)
+        
+        for field in class_.fields:
+            field_type = get_type_descriptor(field.expr_type)
+            pool.add_fieldref(field.name, field_type, fq_class_name)
+
+        for method in class_.methods:
+            method_type = get_method_descriptor(
+                [param_type for (_, param_type) in method.parameters],
+                method.return_type)
+            pool.add_methodref(method.method_name, method_type, fq_class_name)
+
+    for method in current.methods:
+        match method:
+            case TExternalMethod(return_type=return_type, parameters=parameters, alias=alias):
+                parts = split_package_path(alias)
+                if len(parts) < 2:
+                    raise CompilerError(
+                        f"Alias '{alias}' is not a correct reference to a Java method, "
+                        f"see method '{method.method_name}' of class '{pool.fq_class_name}'",
+                        source=COMPILER_NAME)
+                
+                java_method_name = parts[-1]
+                fq_class_name = make_fully_qualifed_name(parts[:-1])
+                external_method_type = get_external_method_descriptor(
+                    [param.expr_type for param in parameters], return_type)
+                pool.add_methodref(
+                    java_method_name, external_method_type, fq_class_name)
+            case TUserDefinedMethod(body=body):
+                for stmt in body:
+                    process_statement_literals(stmt, pool)
+        
+    return pool
+
+
+@dataclass(frozen=True)
+class CONSTANT(ABC):
+    index: int
+
+    @property
+    @abstractmethod
+    def tag(self) -> int: ...
+
+    @abstractmethod
+    def to_bytes(self) -> bytes: ...
+
+
+@dataclass(frozen=True)
+class CONSTANT_Utf8(CONSTANT):
+    text: str
+
+    @property
+    def tag(self) -> int:
+        return 1
+    
+    def to_bytes(self) -> bytes:
+        text_bytes = u1_seq(self.text)
+        return merge_bytes(u1(self.tag), u2(len(text_bytes)), text_bytes)
+
+
+@dataclass(frozen=True)
+class CONSTANT_Integer(CONSTANT):
+    const: int
+
+    @property
+    def tag(self) -> int:
+        return 3
+    
+    def to_bytes(self) -> bytes:
+        return merge_bytes(u1(self.tag), s4(self.const))
+
+
+@dataclass(frozen=True)
+class CONSTANT_Float(CONSTANT):
+    const: float
+
+    @property
+    def tag(self) -> int:
+        return 4
+    
+    def to_bytes(self) -> bytes:
+        # Упаковываем float в 4 байта в формате IEEE 754 (big-endian)
+        return merge_bytes(u1(self.tag), struct.pack(">f", self.const))
+
+
+@dataclass(frozen=True)
+class CONSTANT_String(CONSTANT):
+    text: str
+    string_index: int
+
+    @property
+    def tag(self) -> int:
+        return 8
+
+    def to_bytes(self) -> bytes:
+        return merge_bytes(u1(self.tag), u2(self.string_index))
+
+
+@dataclass(frozen=True)
+class CONSTANT_NameAndType(CONSTANT):
+    name: str
+    type: str
+    name_const_index: int
+    type_const_index: int
+
+    @property
+    def tag(self) -> int:
+        return 12
+
+    def to_bytes(self) -> bytes:
+        return merge_bytes(u1(self.tag), u2(self.name_const_index), u2(self.type_const_index))
+
+
+@dataclass(frozen=True)
+class CONSTANT_Class(CONSTANT):
+    class_name: str
+    name_index: int
+
+    @property
+    def tag(self) -> int:
+        return 7
+
+    def to_bytes(self) -> bytes:
+        return merge_bytes(u1(self.tag), u2(self.name_index))
+
+
+@dataclass(frozen=True)
+class CONSTANT_Fieldref(CONSTANT):
+    field_name: str
+    type: str
+    class_index: int
+    name_and_type_index: int
+
+    @property
+    def tag(self) -> int:
+        return 9
+
+    def to_bytes(self) -> bytes:
+        return merge_bytes(u1(self.tag), u2(self.class_index), u2(self.name_and_type_index))
+
+
+@dataclass(frozen=True)
+class CONSTANT_Methodref(CONSTANT):
+    method_name: str
+    type: str
+    class_index: int
+    name_and_type_index: int
+
+    @property
+    def tag(self) -> int:
+        return 10
+
+    def to_bytes(self) -> bytes:
+        return merge_bytes(u1(self.tag), u2(self.class_index), u2(self.name_and_type_index))
 
 
 def split_package_path(package: str) -> list[str]:
@@ -81,17 +436,16 @@ def process_expression_literals(expr: TExpr, pool: ConstPool) -> None:
                 feature_name=method_name,
                 arguments=arguments,
                 owner=owner):
-            type = get_method_descriptor(
-                args_types=[arg.expr_type for arg in arguments],
-                return_type=return_type)
-
             if owner is None:
                 fq_class_name = None
             else:
                 fq_class_name = add_package_prefix(owner.expr_type.full_name)
-                pool.add_class(fq_class_name)
-            
-            pool.add_methodref(method_name, type, fq_class_name)
+
+            # Данный вызов необходим для проверки того, что
+            # заданная константа уже существует, т.к. к этому моменту
+            # она точно должна быть. В случае отсутсвия выбросится AssertionError
+            # с указанием какой метод и в каком классе не был найден
+            pool.find_methodref(method_name, fq_class_name)
             for arg in arguments:
                 process_expression_literals(arg, pool)
         case TCreateExpr(
@@ -99,13 +453,12 @@ def process_expression_literals(expr: TExpr, pool: ConstPool) -> None:
                 constructor_name=method_name,
                 arguments=arguments):
             fq_class_name = add_package_prefix(expr_type.full_name)
-            pool.add_class(fq_class_name)
 
-            type = get_method_descriptor(
-                args_types=[arg.expr_type for arg in arguments],
-                return_type=return_type)
-
-            pool.add_methodref(method_name, type, fq_class_name)
+            # Данный вызов необходим для проверки того, что
+            # заданная константа уже существует, т.к. к этому моменту
+            # она точно должна быть. В случае отсутсвия выбросится AssertionError
+            # с указанием какой метод и в каком классе не был найден
+            pool.find_methodref(method_name, fq_class_name)
             for arg in arguments:
                 process_expression_literals(arg, pool)
         case TBinaryOp(left=left, right=right):
@@ -148,110 +501,48 @@ def process_statement_literals(stmt: TStatement, pool: ConstPool) -> None:
         case _: assert False
 
 
-def get_external_method_descriptor(method: TExternalMethod) -> str:
-    fq_name = make_fully_qualifed_name(split_package_path(DEFAULT_PACKAGE) + [PLATFORM_CLASS_NAME])
-    platform_descriptor = f"L{fq_name};"
+def get_external_method_descriptor(args_types: list[Type], return_type: Type) -> str:
+    type_mapping = {
+        add_package_prefix("INTEGER"): "I",
+        add_package_prefix("FLOAT"): "F",
+        add_package_prefix("STRING"): "Ljava/lang/String;",
+        add_package_prefix("BOOLEAN"): "I",
+        add_package_prefix("CHARACTER"): "Ljava/lang/String;",
+    }
 
-    # В качестве типов параметров устанавливаем всем параметрам
-    # класса PLATFORM - это позволит реализовать взаимодействие между
-    # кодом на Eiffel и Java
-    params_desc = "".join(platform_descriptor * len(method.parameters))
-    full_params_desc = platform_descriptor + params_desc
+    descriptors = []
+    for typ in args_types + [return_type]:
+        fq_class_name = add_package_prefix(typ.full_name)
+        if fq_class_name not in type_mapping:
+            raise CompilerError(
+                f"Unsupported type '{typ.name}' (fully-qualified: '{fq_class_name}'). "
+                "Allowed types for Java–Eiffel external methods are: INTEGER, FLOAT, STRING, BOOLEAN, and CHARACTER.")
+        descriptors.append(fq_class_name)
 
-    # Аналогично поступаем для всех дескрипторов, которые не являются void
-    return_desc = get_type_descriptor(method.return_type)
-    if return_desc != "V":
-        return_desc = platform_descriptor
-
+    full_params_desc = "".join(descriptors[:-1])
+    return_desc = descriptors[-1]
     return f"({full_params_desc}){return_desc}"
 
 
-def process_external_method(pool: ConstPool, method: TExternalMethod) -> None:
-    full_alias = method.alias
-    parts = split_package_path(full_alias)
-    if len(parts) < 2:
-        raise CompilerError(
-            f"Alias '{full_alias}' is not a correct reference to a Java method, "
-            f"see method '{method.method_name}' of class '{pool.fq_class_name}'"
-            source=COMPILER_NAME)
-
-    method_desc = get_method_descriptor(
-        [param. for arg in method.parameters]
-    )
-    
-    pool.add_methodref(java_method_name, method_desc, fq_)
-
-    nat_method = NameAndType(
-        pool.next_index,
-        name_const_index=method_name_idx,
-        type_const_index=method_desc_idx
-    )
-    pool.pool.append(nat_method)
-    nat_method_idx = nat_method.index
-    
-    methodref = Methodref(
-        pool.next_index,
-        class_index=class_const_idx,
-        name_and_type_index=nat_method_idx
-    )
-    pool.pool.append(methodref)
-
-
-def find_method(classes: list[TClass], method_name: str) -> TMethod:
-    for cls in classes:
-        for method in cls.methods:
-            if method.method_name == method_name:
-                return method
-    assert False
-
-
-def find_field(classes: list[TClass], field_name: str) -> TField:
-    for cls in classes:
-        for field in cls.fields:
-            if field.name == field_name:
-                return field
-    assert False
-
-
-def make_const_pool(tclass: TClass) -> ConstPool:
-    fq_class_name = add_package_prefix(tclass.class_name)
-    pool = ConstPool(fq_class_name)
-
-    for field in tclass.fields:
-        pool.add_field(fq_class_name, field)
-
-    for method in tclass.methods:
-        if isinstance(method, TExternalMethod):
-            process_external_method(pool, method)
-        else:
-            assert isinstance(method, TUserDefinedMethod)
-
-            pool.add_method(fq_class_name, method)
-            for stmt in method.body:
-                process_statement_literals(stmt, pool)
-
-    return pool
-
-
-def pretty_print_pool(pool: ConstantPool) -> None:
+def pretty_print_const_pool(pool: ConstPool) -> None:
     print("Constant Pool:")
     print("-" * 40)
     for const in pool:
-        if isinstance(const, Utf8):
+        if isinstance(const, CONSTANT_Utf8):
             print(f"{const.index:3}: Utf8       : '{const.text}'")
-        elif isinstance(const, Integer): 
+        elif isinstance(const, CONSTANT_Integer): 
             print(f"{const.index:3}: Integer    : {const.const}")
-        elif isinstance(const, Float): 
+        elif isinstance(const, CONSTANT_Float): 
             print(f"{const.index:3}: Float      : {const.const}")
-        elif isinstance(const, String): 
+        elif isinstance(const, CONSTANT_String): 
             print(f"{const.index:3}: String     : string_index={const.string_index}")
-        elif isinstance(const, NameAndType):
+        elif isinstance(const, CONSTANT_NameAndType):
             print(f"{const.index:3}: NameAndType: name_index={const.name_const_index}, type_index={const.type_const_index}")
-        elif isinstance(const, Class):
+        elif isinstance(const, CONSTANT_Class):
             print(f"{const.index:3}: Class      : name_index={const.name_index}")
-        elif isinstance(const, Fieldref): 
+        elif isinstance(const, CONSTANT_Fieldref): 
             print(f"{const.index:3}: Fieldref   : class_index={const.class_index}, name_and_type_index={const.name_and_type_index}")
-        elif isinstance(const, Methodref): 
+        elif isinstance(const, CONSTANT_Methodref): 
             print(f"{const.index:3}: Methodref  : class_index={const.class_index}, name_and_type_index={const.name_and_type_index}")
         else:
             print(f"{const.index:3}: Unknown constant type: {const}")

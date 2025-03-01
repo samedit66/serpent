@@ -1,7 +1,7 @@
 from serpent.semantic_checker.type_check import *
 
 from serpent.codegen.constant_pool import (
-    ConstantPool,
+    ConstPool,
     add_package_prefix,
     get_type_descriptor)
 from serpent.codegen.bytecommand import *
@@ -34,7 +34,7 @@ def bytecode_size(bytecode: list[ByteCommand]) -> int:
 
 def generate_bytecode_for_integer_const(
         const: TIntegerConst,
-        constant_pool: ConstantPool) -> list[ByteCommand]:
+        constant_pool: ConstPool) -> list[ByteCommand]:
     fq_class_name = add_package_prefix("INTEGER")
     integer_class_idx = constant_pool.add_constant_class(fq_class_name)
     methodref_idx = constant_pool.add_methodref(
@@ -53,7 +53,7 @@ def generate_bytecode_for_integer_const(
 
 def generate_bytecode_for_real_const(
         const: TRealConst,
-        constant_pool: ConstantPool) -> list[ByteCommand]:
+        constant_pool: ConstPool) -> list[ByteCommand]:
     fq_class_name = add_package_prefix("REAL")
     real_class_idx = constant_pool.add_constant_class(fq_class_name)
     methodref_idx = constant_pool.add_methodref(
@@ -72,7 +72,7 @@ def generate_bytecode_for_real_const(
 
 def generate_bytecode_for_bool_const(
         const: TBoolConst,
-        constant_pool: ConstantPool) -> list[ByteCommand]:
+        constant_pool: ConstPool) -> list[ByteCommand]:
     fq_class_name = add_package_prefix("BOOLEAN")
     bool_class_idx = constant_pool.add_constant_class(fq_class_name)
     methodref_idx = constant_pool.add_methodref(
@@ -91,7 +91,7 @@ def generate_bytecode_for_bool_const(
 
 def generate_bytecode_for_string_const(
         const: TStringConst,
-        constant_pool: ConstantPool) -> list[ByteCommand]:
+        constant_pool: ConstPool) -> list[ByteCommand]:
     fq_class_name = add_package_prefix("STRING")
     string_class_idx = constant_pool.add_constant_class(fq_class_name)
     methodref_idx = constant_pool.add_methodref(
@@ -113,7 +113,7 @@ def generate_bytecode_for_string_const(
 
 def generate_bytecode_for_character_const(
         const: TCharacterConst,
-        constant_pool: ConstantPool) -> list[ByteCommand]:
+        constant_pool: ConstPool) -> list[ByteCommand]:
     fq_class_name = add_package_prefix("CHARACTER")
     char_class_idx = constant_pool.add_constant_class(fq_class_name)
     methodref_idx = constant_pool.add_methodref(
@@ -140,7 +140,7 @@ def generate_bytecode_for_void_const() -> list[ByteCommand]:
 def generate_bytecode_for_create_expr(
         tcreate_expr: TCreateExpr,
         fq_class_name: str,
-        constant_pool: ConstantPool,
+        constant_pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     create_fq_class_name = add_package_prefix(tcreate_expr.expr_type.full_name)
     class_index = constant_pool.add_constant_class(create_fq_class_name)
@@ -174,7 +174,7 @@ def generate_bytecode_for_create_expr(
 def generate_bytecode_for_feature_call(
         tfeature_call: TFeatureCall,
         fq_class_name: str,
-        constant_pool: ConstantPool,
+        constant_pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     bytecode = []
     
@@ -210,7 +210,7 @@ def generate_bytecode_for_feature_call(
 def generate_bytecode_for_field(
         tfield: TField,
         fq_class_name: str,
-        constant_pool: ConstantPool) -> list[ByteCommand]:
+        constant_pool: ConstPool) -> list[ByteCommand]:
     field_index = constant_pool.add_field(fq_class_name, tfield)
     return [GetField(field_index)]
 
@@ -223,7 +223,7 @@ def generate_bytecode_for_variable(
 
 
 def generate_bytecode_for_and(left: TExpr, right: TExpr, fq_class_name: str,
-                              constant_pool: ConstantPool,
+                              constant_pool: ConstPool,
                               local_table: LocalTable) -> list[ByteCommand]:
     """
     Нестандартное логическое И без короткого замыкания.
@@ -237,7 +237,7 @@ def generate_bytecode_for_and(left: TExpr, right: TExpr, fq_class_name: str,
 
 
 def generate_bytecode_for_or(left: TExpr, right: TExpr, fq_class_name: str,
-                             constant_pool: ConstantPool,
+                             constant_pool: ConstPool,
                              local_table: LocalTable) -> list[ByteCommand]:
     """
     Нестандартное логическое ИЛИ без короткого замыкания.
@@ -288,7 +288,7 @@ def generate_bytecode_for_or(left: TExpr, right: TExpr, fq_class_name: str,
 
 
 def generate_bytecode_for_and_then(left: TExpr, right: TExpr, fq_class_name: str,
-                                   constant_pool: ConstantPool,
+                                   constant_pool: ConstPool,
                                    local_table: LocalTable) -> list[ByteCommand]:
     """
     Логическое И с коротким замыканием.
@@ -340,7 +340,7 @@ def generate_bytecode_for_and_then(left: TExpr, right: TExpr, fq_class_name: str
 
 
 def generate_bytecode_for_or_else(left: TExpr, right: TExpr, fq_class_name: str,
-                                  constant_pool: ConstantPool,
+                                  constant_pool: ConstPool,
                                   local_table: LocalTable) -> list[ByteCommand]:
     """
     Логическое ИЛИ с коротким замыканием.
@@ -394,7 +394,7 @@ def generate_bytecode_for_or_else(left: TExpr, right: TExpr, fq_class_name: str,
 def generate_bytecode_for_expr(
         texpr: TExpr,
         fq_class_name: str,
-        constant_pool: ConstantPool,
+        constant_pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     match texpr:
         case TIntegerConst():
@@ -426,7 +426,7 @@ def generate_bytecode_for_expr(
 def generate_bytecode_for_assignment(
         tassignment: TAssignment,
         fq_class_name: str,
-        constant_pool: ConstantPool,
+        constant_pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     lvalue = tassignment.lvalue
     rvalue = tassignment.rvalue
@@ -449,7 +449,7 @@ def generate_bytecode_for_assignment(
 def generate_bytecode_for_ifstmt(
         tifstmt: TIfStmt,
         fq_class_name: str,
-        constant_pool: ConstantPool,
+        constant_pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     """
     Генерирует последовательность байт-кодов для оператора if.
@@ -545,7 +545,7 @@ def generate_bytecode_for_ifstmt(
 def generate_bytecode_for_loop(
         tloop: TLoopStmt,
         fq_class_name: str,
-        constant_pool: ConstantPool,
+        constant_pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     """
     Генерирует байт-код для цикла until.
@@ -609,7 +609,7 @@ def generate_bytecode_for_loop(
 def generate_bytecode_for_routine_call(
         troutine_call: TRoutineCall,
         fq_class_name: str,
-        constant_pool: ConstantPool,
+        constant_pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     tfeature_call = troutine_call.feature_call
     bytecode = generate_bytecode_for_feature_call(
@@ -622,7 +622,7 @@ def generate_bytecode_for_routine_call(
 def generate_bytecode_for_stmt(
         tstmt: TStatement,
         fq_class_name: str,
-        constant_pool: ConstantPool,
+        constant_pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     match tstmt:
         case TAssignment():
@@ -643,7 +643,7 @@ def generate_bytecode_for_stmt(
 def generate_bytecode_for_stmts(
         tstmts: list[TStatement],
         fq_class_name: str,
-        constant_pool: ConstantPool,
+        constant_pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     bytecode = []
 
@@ -658,7 +658,7 @@ def generate_bytecode_for_stmts(
 def generate_bytecode_for_method(
         method: TMethod,
         fq_class_name: str,
-        constant_pool: ConstantPool,
+        constant_pool: ConstPool,
         local_table: LocalTable)-> list[ByteCommand]:
     bytecode = []
 
