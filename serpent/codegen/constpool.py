@@ -14,11 +14,12 @@ class ConstPool:
     уникальное имя, за счет этого поиск Methodref осуществляется проще
     """
     fq_class_name: str
-    """Полное квалифицированное имя класса"""
+    """Полное квалифицированное имя класса, для которого составляется таблица"""
     constants: list[CONSTANT]
     """Список всех констант для данного класса"""
 
     def to_bytes(self) -> bytes:
+        """Возвращает таблицу констант непосредственно в виде байтов"""
         return b"".join(const.to_bytes() for const in self.constants)
     
     @property
