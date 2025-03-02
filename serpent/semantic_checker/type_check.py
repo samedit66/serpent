@@ -416,7 +416,7 @@ def annotate_create_expr(
                             location=create_expr.location)
 
     if not global_class_table.has_class_table(expr_type.full_name):
-        flatten_cls = flatten_class_mapping[expr_type.full_name]
+        flatten_cls = flatten_class_mapping[expr_type.name]
         # Костыль: из объекта Type (владельница фичи) создаем объект
         # декларации типа, для генерации соответствующей таблицы
         actual_type = class_decl_type_of_type(expr_type)
@@ -739,7 +739,7 @@ def annotate_create_stmt(create_stmt: CreateStmt,
 
         if not global_class_table.has_class_table(
                 create_object_type.full_name):
-            flatten_cls = flatten_class_mapping[create_object_type.full_name]
+            flatten_cls = flatten_class_mapping[create_object_type.name]
             # Костыль: из объекта Type (владельница фичи) создаем объект
             # декларации типа, для генерации соответствующей таблицы
             actual_type = class_decl_type_of_type(create_object_type)
