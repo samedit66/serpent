@@ -88,11 +88,6 @@ def make_class_decl(class_decl_dict: dict) -> ClassDecl:
                 select=SelectedFeatures(
                     class_name="ANY",
                     selected_features=[]))]
-        
-    # В случае, если у класс не было явно указанных конструкторов,
-    # устанавливаем конструктор по умолчанию
-    if not class_decl.create:
-        class_decl.create = ["default_create"]
 
     return class_decl
 
