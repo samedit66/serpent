@@ -10,7 +10,7 @@ from serpent.semantic_checker.type_check import *
 from serpent.codegen.byte_utils import *
 
 
-DEFAULT_PACKAGE = "com.eiffel.base"
+DEFAULT_PACKAGE = "com.eiffel"
 """Пакет, в котором будут все классы, объявленные программистом
 или в стандартной библиотеке
 """
