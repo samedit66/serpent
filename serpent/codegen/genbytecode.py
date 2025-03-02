@@ -1,6 +1,6 @@
 from serpent.semantic_checker.type_check import *
 
-from serpent.codegen.constant_pool import (
+from serpent.codegen.constpool import (
     ConstPool,
     add_package_prefix,
     get_type_descriptor)
@@ -28,24 +28,20 @@ class LocalTable:
         return index
 
 
-def bytecode_size(bytecode: list[ByteCommand]) -> int:
-    return sum(bc.size() for bc in bytecode)
-
-
 def generate_bytecode_for_integer_const(
         const: TIntegerConst,
-        constant_pool: ConstPool) -> list[ByteCommand]:
+        pool: ConstPool) -> list[ByteCommand]:
     fq_class_name = add_package_prefix("INTEGER")
-    integer_class_idx = constant_pool.add_constant_class(fq_class_name)
-    methodref_idx = constant_pool.add_methodref(
-        fq_class_name,
+    class_index = pool.find_class(fq_class_name)
+    methodref_index = pool.add_methodref(
         method_name="<init>",
-        method_desc="(I)V")
+        desc="(I)V",
+        fq_class_name=fq_class_name)
 
     bytecode = [
-        New(integer_class_idx),
+        New(class_index),
         Bipush(const.value),
-        InvokeSpecial(methodref_idx)
+        InvokeSpecial(methodref_index)
     ]
 
     return bytecode
@@ -53,16 +49,16 @@ def generate_bytecode_for_integer_const(
 
 def generate_bytecode_for_real_const(
         const: TRealConst,
-        constant_pool: ConstPool) -> list[ByteCommand]:
+        pool: ConstPool) -> list[ByteCommand]:
     fq_class_name = add_package_prefix("REAL")
-    real_class_idx = constant_pool.add_constant_class(fq_class_name)
-    methodref_idx = constant_pool.add_methodref(
-        fq_class_name,
+    class_index = pool.find_class(fq_class_name)
+    methodref_idx = pool.add_methodref(
         method_name="<init>",
-        method_desc="(F)V")
+        desc="(F)V",
+        fq_class_name=fq_class_name)
 
     bytecode = [
-        New(real_class_idx),
+        New(class_index),
         Bipush(const.value),
         InvokeSpecial(methodref_idx)
     ]
@@ -72,16 +68,16 @@ def generate_bytecode_for_real_const(
 
 def generate_bytecode_for_bool_const(
         const: TBoolConst,
-        constant_pool: ConstPool) -> list[ByteCommand]:
+        pool: ConstPool) -> list[ByteCommand]:
     fq_class_name = add_package_prefix("BOOLEAN")
-    bool_class_idx = constant_pool.add_constant_class(fq_class_name)
-    methodref_idx = constant_pool.add_methodref(
-        fq_class_name,
+    class_index = pool.find_class(fq_class_name)
+    methodref_idx = pool.add_methodref(
         method_name="<init>",
-        method_desc="(I)V")
+        desc="(Z)V",
+        fq_class_name=fq_class_name)
 
     bytecode = [
-        New(bool_class_idx),
+        New(class_index),
         Bipush(int(const.value)),
         InvokeSpecial(methodref_idx)
     ]
@@ -91,19 +87,17 @@ def generate_bytecode_for_bool_const(
 
 def generate_bytecode_for_string_const(
         const: TStringConst,
-        constant_pool: ConstPool) -> list[ByteCommand]:
+        pool: ConstPool) -> list[ByteCommand]:
     fq_class_name = add_package_prefix("STRING")
-    string_class_idx = constant_pool.add_constant_class(fq_class_name)
-    methodref_idx = constant_pool.add_methodref(
-        fq_class_name,
+    class_index = pool.find_class(fq_class_name)
+    methodref_idx = pool.add_methodref(
         method_name="<init>",
-        method_desc="(Ljava/lang/String;)V")
-
-    string_index = constant_pool.find_constant_string_index(const.value)
-    assert string_index != -1
-
+        desc="(Ljava/lang/String;)V",
+        fq_class_name=fq_class_name)
+    
+    string_index = pool.find_string(const.value)
     bytecode = [
-        New(string_class_idx),
+        New(class_index),
         Ldc(string_index),
         InvokeSpecial(methodref_idx)
     ]
@@ -113,19 +107,17 @@ def generate_bytecode_for_string_const(
 
 def generate_bytecode_for_character_const(
         const: TCharacterConst,
-        constant_pool: ConstPool) -> list[ByteCommand]:
+        pool: ConstPool) -> list[ByteCommand]:
     fq_class_name = add_package_prefix("CHARACTER")
-    char_class_idx = constant_pool.add_constant_class(fq_class_name)
-    methodref_idx = constant_pool.add_methodref(
-        fq_class_name,
+    class_index = pool.find_class(fq_class_name)
+    methodref_idx = pool.add_methodref(
         method_name="<init>",
-        method_desc="(Ljava/lang/String;)V")
+        desc="(Ljava/lang/String;)V",
+        fq_class_name=fq_class_name,)
 
-    string_index = constant_pool.find_constant_string_index(const.value)
-    assert string_index != -1
-
+    string_index = pool.find_string(const.value)
     bytecode = [
-        New(char_class_idx),
+        New(class_index),
         Ldc(string_index),
         InvokeSpecial(methodref_idx)
     ]
@@ -140,33 +132,32 @@ def generate_bytecode_for_void_const() -> list[ByteCommand]:
 def generate_bytecode_for_create_expr(
         tcreate_expr: TCreateExpr,
         fq_class_name: str,
-        constant_pool: ConstPool,
+        pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     create_fq_class_name = add_package_prefix(tcreate_expr.expr_type.full_name)
-    class_index = constant_pool.add_constant_class(create_fq_class_name)
+    class_index = pool.find_class(create_fq_class_name)
     
     bytecode = [
         New(class_index),
         Dup()
     ]
 
-    init_idx = constant_pool.add_methodref(
-        fq_class_name=create_fq_class_name,
+    init_index = pool.add_methodref(
         method_name="<init>",
-        method_desc="()V")
+        desc="()V",
+        fq_class_name=create_fq_class_name)
     bytecode.extend(
-        [InvokeSpecial(init_idx), Dup()])
+        [InvokeSpecial(init_index), Dup()])
 
     for arg in tcreate_expr.arguments:
-        arg_bytecode = generate_bytecode_for_expr(arg, fq_class_name, constant_pool, local_table)
+        arg_bytecode = generate_bytecode_for_expr(
+            arg, fq_class_name, pool, local_table)
         bytecode.extend(arg_bytecode)
 
-    constructor_desc = "".join(get_type_descriptor(arg.expr_type) for arg in tcreate_expr.arguments)
-    constructor_idx = constant_pool.add_methodref(
-        fq_class_name=create_fq_class_name,
+    constructor_index = pool.find_methodref(
         method_name=tcreate_expr.constructor_name,
-        method_desc=f"({constructor_desc})V")
-    bytecode.append(InvokeVirtual(constructor_idx))
+        fq_class_name=create_fq_class_name)
+    bytecode.append(InvokeVirtual(constructor_index))
 
     return bytecode
 
@@ -174,7 +165,7 @@ def generate_bytecode_for_create_expr(
 def generate_bytecode_for_feature_call(
         tfeature_call: TFeatureCall,
         fq_class_name: str,
-        constant_pool: ConstPool,
+        pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     bytecode = []
     
@@ -185,33 +176,27 @@ def generate_bytecode_for_feature_call(
             generate_bytecode_for_expr(
                 tfeature_call.owner,
                 fq_class_name,
-                constant_pool,
+                pool,
                 local_table))
 
     for arg in tfeature_call.arguments:
         arg_bytecode = generate_bytecode_for_expr(
-            arg, fq_class_name, constant_pool, local_table)
+            arg, fq_class_name, pool, local_table)
         bytecode.extend(arg_bytecode)
 
-    if tfeature_call.owner is None:
-        methoref_idx = constant_pool.find_constant_methodref(
-            fq_class_name, tfeature_call.feature_name)
-    else:
-        owner_fq_class_name = add_package_prefix(tfeature_call.owner.expr_type.full_name)
-        methoref_idx = constant_pool.find_constant_methodref(
-            owner_fq_class_name, tfeature_call.feature_name)
+    if tfeature_call.owner is not None:
+        fq_class_name = add_package_prefix(tfeature_call.owner.expr_type.full_name)
+    methoref_idx = pool.find_methodref(tfeature_call.feature_name, fq_class_name)
         
-    assert methoref_idx != -1
     bytecode.append(InvokeVirtual(methoref_idx))
-
     return bytecode
 
 
 def generate_bytecode_for_field(
         tfield: TField,
         fq_class_name: str,
-        constant_pool: ConstPool) -> list[ByteCommand]:
-    field_index = constant_pool.add_field(fq_class_name, tfield)
+        pool: ConstPool) -> list[ByteCommand]:
+    field_index = pool.add_fieldref(tfield.name, fq_class_name)
     return [GetField(field_index)]
 
 
@@ -223,21 +208,21 @@ def generate_bytecode_for_variable(
 
 
 def generate_bytecode_for_and(left: TExpr, right: TExpr, fq_class_name: str,
-                              constant_pool: ConstPool,
+                              pool: ConstPool,
                               local_table: LocalTable) -> list[ByteCommand]:
     """
     Нестандартное логическое И без короткого замыкания.
     Вычисляем левый и правый операнды, затем перемножаем их (поскольку 1*1==1, а если хоть один 0, то 0).
     """
     bytecode = []
-    bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, constant_pool, local_table))
-    bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, constant_pool, local_table))
+    bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, pool, local_table))
+    bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, pool, local_table))
     bytecode.append(Imul())
     return bytecode
 
 
 def generate_bytecode_for_or(left: TExpr, right: TExpr, fq_class_name: str,
-                             constant_pool: ConstPool,
+                             pool: ConstPool,
                              local_table: LocalTable) -> list[ByteCommand]:
     """
     Нестандартное логическое ИЛИ без короткого замыкания.
@@ -246,8 +231,8 @@ def generate_bytecode_for_or(left: TExpr, right: TExpr, fq_class_name: str,
     Для этого формируется ветвящаяся последовательность, которая патчится после вычисления байтовых позиций.
     """
     bytecode = []
-    bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, constant_pool, local_table))
-    bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, constant_pool, local_table))
+    bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, pool, local_table))
+    bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, pool, local_table))
     bytecode.append(Iadd())
     # Ветвящаяся последовательность:
     # 1. Dup – дублируем сумму
@@ -288,7 +273,7 @@ def generate_bytecode_for_or(left: TExpr, right: TExpr, fq_class_name: str,
 
 
 def generate_bytecode_for_and_then(left: TExpr, right: TExpr, fq_class_name: str,
-                                   constant_pool: ConstPool,
+                                   pool: ConstPool,
                                    local_table: LocalTable) -> list[ByteCommand]:
     """
     Логическое И с коротким замыканием.
@@ -306,12 +291,12 @@ def generate_bytecode_for_and_then(left: TExpr, right: TExpr, fq_class_name: str
       - L_end:
     """
     bytecode = []
-    bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, constant_pool, local_table))
+    bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, pool, local_table))
     bytecode.append(Dup())
     index_ifeq = len(bytecode)
     bytecode.append(Ifeq(0))  # placeholder
     bytecode.append(Pop())
-    bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, constant_pool, local_table))
+    bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, pool, local_table))
     index_goto = len(bytecode)
     bytecode.append(Goto(0))  # placeholder
     label_false_index = len(bytecode)
@@ -340,7 +325,7 @@ def generate_bytecode_for_and_then(left: TExpr, right: TExpr, fq_class_name: str
 
 
 def generate_bytecode_for_or_else(left: TExpr, right: TExpr, fq_class_name: str,
-                                  constant_pool: ConstPool,
+                                  pool: ConstPool,
                                   local_table: LocalTable) -> list[ByteCommand]:
     """
     Логическое ИЛИ с коротким замыканием.
@@ -358,12 +343,12 @@ def generate_bytecode_for_or_else(left: TExpr, right: TExpr, fq_class_name: str,
       - L_end:
     """
     bytecode = []
-    bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, constant_pool, local_table))
+    bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, pool, local_table))
     bytecode.append(Dup())
     index_ifne = len(bytecode)
     bytecode.append(Ifne(0))  # placeholder
     bytecode.append(Pop())
-    bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, constant_pool, local_table))
+    bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, pool, local_table))
     index_goto = len(bytecode)
     bytecode.append(Goto(0))  # placeholder
     label_true_index = len(bytecode)
@@ -394,29 +379,29 @@ def generate_bytecode_for_or_else(left: TExpr, right: TExpr, fq_class_name: str,
 def generate_bytecode_for_expr(
         texpr: TExpr,
         fq_class_name: str,
-        constant_pool: ConstPool,
+        pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     match texpr:
         case TIntegerConst():
-            return generate_bytecode_for_integer_const(texpr, constant_pool)
+            return generate_bytecode_for_integer_const(texpr, pool)
         case TRealConst():
-            return generate_bytecode_for_real_const(texpr, constant_pool)
+            return generate_bytecode_for_real_const(texpr, pool)
         case TBoolConst():
-            return generate_bytecode_for_bool_const(texpr, constant_pool)
+            return generate_bytecode_for_bool_const(texpr, pool)
         case TCharacterConst():
-            return generate_bytecode_for_character_const(texpr, constant_pool)
+            return generate_bytecode_for_character_const(texpr, pool)
         case TStringConst():
-            return generate_bytecode_for_string_const(texpr, constant_pool)
+            return generate_bytecode_for_string_const(texpr, pool)
         case TStringConst():
             return generate_bytecode_for_void_const(texpr)
         case TCreateExpr():
             return generate_bytecode_for_create_expr(
-                texpr, fq_class_name, constant_pool, local_table)
+                texpr, fq_class_name, pool, local_table)
         case TFeatureCall():
             return generate_bytecode_for_feature_call(
-                texpr, fq_class_name, constant_pool, local_table)
+                texpr, fq_class_name, pool, local_table)
         case TField():
-            return generate_bytecode_for_field(texpr, fq_class_name, constant_pool)
+            return generate_bytecode_for_field(texpr, fq_class_name, pool)
         case TVariable():
             return generate_bytecode_for_variable(texpr, local_table)
         case _:
@@ -426,18 +411,18 @@ def generate_bytecode_for_expr(
 def generate_bytecode_for_assignment(
         tassignment: TAssignment,
         fq_class_name: str,
-        constant_pool: ConstPool,
+        pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     lvalue = tassignment.lvalue
     rvalue = tassignment.rvalue
 
     bytecode = []
-    bytecode.extend(generate_bytecode_for_expr(lvalue, fq_class_name, constant_pool, local_table))
-    bytecode.extend(generate_bytecode_for_expr(rvalue, fq_class_name, constant_pool, local_table))
+    bytecode.extend(generate_bytecode_for_expr(lvalue, fq_class_name, pool, local_table))
+    bytecode.extend(generate_bytecode_for_expr(rvalue, fq_class_name, pool, local_table))
 
     match lvalue:
         case TField() as tfield:
-            field_index = constant_pool.add_field(fq_class_name, tfield)
+            field_index = pool.find_fieldref(tfield.name, fq_class_name)
             bytecode.append(PutField(field_index))
         case TVariable() as tvariable:
             variable_index = local_table[tvariable.name]
@@ -449,7 +434,7 @@ def generate_bytecode_for_assignment(
 def generate_bytecode_for_ifstmt(
         tifstmt: TIfStmt,
         fq_class_name: str,
-        constant_pool: ConstPool,
+        pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     """
     Генерирует последовательность байт-кодов для оператора if.
@@ -491,7 +476,7 @@ def generate_bytecode_for_ifstmt(
     for i, (branch_type, cond, stmts) in enumerate(branches):
         if branch_type in ('if', 'elseif'):
             # Генерируем код для вычисления условия
-            cond_code = generate_bytecode_for_expr(cond, fq_class_name, constant_pool, local_table)
+            cond_code = generate_bytecode_for_expr(cond, fq_class_name, pool, local_table)
             instrs.extend(cond_code)
             # Вставляем условный переход: если условие ложно, перейти к следующей ветке
             cond_jump_index = len(instrs)
@@ -505,7 +490,7 @@ def generate_bytecode_for_ifstmt(
         
         # Генерируем код для инструкций тела ветки
         for stmt in stmts:
-            stmt_code = generate_bytecode_for_stmt(stmt, fq_class_name, constant_pool, local_table)
+            stmt_code = generate_bytecode_for_stmt(stmt, fq_class_name, pool, local_table)
             instrs.extend(stmt_code)
         
         # Для всех веток, кроме последней, добавляем безусловный переход к концу конструкции
@@ -545,7 +530,7 @@ def generate_bytecode_for_ifstmt(
 def generate_bytecode_for_loop(
         tloop: TLoopStmt,
         fq_class_name: str,
-        constant_pool: ConstPool,
+        pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     """
     Генерирует байт-код для цикла until.
@@ -567,7 +552,7 @@ def generate_bytecode_for_loop(
     
     # Генерируем код для инициализационных инструкций
     for init_stmt in tloop.init_stmts:
-        init_code = generate_bytecode_for_stmt(init_stmt, fq_class_name, constant_pool, local_table)
+        init_code = generate_bytecode_for_stmt(init_stmt, fq_class_name, pool, local_table)
         instrs.extend(init_code)
     
     # Отмечаем начало цикла
@@ -575,11 +560,11 @@ def generate_bytecode_for_loop(
     
     # Генерируем код для тела цикла
     for stmt in tloop.body:
-        body_code = generate_bytecode_for_stmt(stmt, fq_class_name, constant_pool, local_table)
+        body_code = generate_bytecode_for_stmt(stmt, fq_class_name, pool, local_table)
         instrs.extend(body_code)
     
     # Генерируем код для вычисления условия until
-    cond_code = generate_bytecode_for_expr(tloop.until_cond, fq_class_name, constant_pool, local_table)
+    cond_code = generate_bytecode_for_expr(tloop.until_cond, fq_class_name, pool, local_table)
     instrs.extend(cond_code)
     
     # Добавляем инструкцию Ifeq с placeholder-смещением.
@@ -609,11 +594,11 @@ def generate_bytecode_for_loop(
 def generate_bytecode_for_routine_call(
         troutine_call: TRoutineCall,
         fq_class_name: str,
-        constant_pool: ConstPool,
+        pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     tfeature_call = troutine_call.feature_call
     bytecode = generate_bytecode_for_feature_call(
-        tfeature_call, fq_class_name, constant_pool, local_table)
+        tfeature_call, fq_class_name, pool, local_table)
     if tfeature_call.expr_type.full_name != "<VOID>":
         bytecode.append(Pop())
     return bytecode
@@ -622,35 +607,35 @@ def generate_bytecode_for_routine_call(
 def generate_bytecode_for_stmt(
         tstmt: TStatement,
         fq_class_name: str,
-        constant_pool: ConstPool,
+        pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     match tstmt:
         case TAssignment():
             return generate_bytecode_for_assignment(
-                tstmt, fq_class_name, constant_pool, local_table)
+                tstmt, fq_class_name, pool, local_table)
         case TRoutineCall():
             return generate_bytecode_for_routine_call(
-                tstmt, fq_class_name, constant_pool, local_table)
+                tstmt, fq_class_name, pool, local_table)
         case TIfStmt():
             return generate_bytecode_for_ifstmt(
-                tstmt, fq_class_name, constant_pool, local_table)
+                tstmt, fq_class_name, pool, local_table)
         case TLoopStmt():
             return generate_bytecode_for_loop(
-                tstmt, fq_class_name, constant_pool, local_table)
+                tstmt, fq_class_name, pool, local_table)
         case _: assert False
 
 
 def generate_bytecode_for_stmts(
         tstmts: list[TStatement],
         fq_class_name: str,
-        constant_pool: ConstPool,
+        pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
     bytecode = []
 
     for tstmt in tstmts:
         bytecode.extend(
             generate_bytecode_for_stmt(
-                tstmt, fq_class_name, constant_pool, local_table))
+                tstmt, fq_class_name, pool, local_table))
         
     return bytecode
 
@@ -658,7 +643,7 @@ def generate_bytecode_for_stmts(
 def generate_bytecode_for_method(
         method: TMethod,
         fq_class_name: str,
-        constant_pool: ConstPool,
+        pool: ConstPool,
         local_table: LocalTable)-> list[ByteCommand]:
     bytecode = []
 
@@ -667,7 +652,7 @@ def generate_bytecode_for_method(
             generate_bytecode_for_stmts(
                 method.body,
                 fq_class_name,
-                constant_pool,
+                pool,
                 local_table))
 
         if method.return_type.full_name != "<VOID>":

@@ -82,7 +82,7 @@ class ConstPool:
         methodref = self.find_constant(
             lambda c: isinstance(c, CONSTANT_Methodref)
                 and c.method_name == method_name
-                and self.get_by_index(c.class_index).text == fq_class_name)
+                and c.fq_class_name == fq_class_name)
         assert methodref is not None, f"{fq_class_name}: {method_name}"
 
         return methodref.index
@@ -94,10 +94,24 @@ class ConstPool:
         fieldref = self.find_constant(
             lambda c: isinstance(c, CONSTANT_Fieldref)
                 and c.field_name == field_name
-                and self.get_by_index(c.class_index).text == fq_class_name)
+                and c.fq_class_name == fq_class_name)
         assert fieldref is not None, f"{fq_class_name}: {field_name}"
 
         return fieldref.index
+
+    def find_class(self, fq_class_name: str) -> int:
+        class_const = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Class)
+                and c.class_name == fq_class_name)
+        assert class_const is not None, fq_class_name
+        return class_const.index
+    
+    def find_string(self, text: str) -> int:
+        string_const = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_String)
+                and c.text == text)
+        assert string_const is not None, text
+        return string_const.index
 
     def add_methodref(
             self,
@@ -114,6 +128,7 @@ class ConstPool:
                 self.next_index,
                 method_name,
                 desc,
+                fq_class_name,
                 class_index,
                 nat_index)
             self.constants.append(methodref)
@@ -134,6 +149,7 @@ class ConstPool:
                 self.next_index,
                 field_name,
                 desc,
+                fq_class_name,
                 class_index,
                 nat_index)
             self.constants.append(fieldref)
@@ -183,7 +199,7 @@ class ConstPool:
             lambda c: isinstance(c, CONSTANT_String)
                 and c.text == text)
 
-        if string_const is not None:
+        if string_const is None:
             string_index = self.add_utf8(text)
             string_const = CONSTANT_String(
                 self.next_index, text, string_index)
@@ -196,7 +212,7 @@ class ConstPool:
             lambda c: isinstance(c, CONSTANT_Integer)
                 and c.const == value)
 
-        if integer_const is not None:
+        if integer_const is None:
             integer_const = CONSTANT_Integer(
                 self.next_index, value)
             self.constants.append(integer_const)
@@ -361,6 +377,7 @@ class CONSTANT_Class(CONSTANT):
 class CONSTANT_Fieldref(CONSTANT):
     field_name: str
     type: str
+    fq_class_name: str
     class_index: int
     name_and_type_index: int
 
@@ -376,6 +393,7 @@ class CONSTANT_Fieldref(CONSTANT):
 class CONSTANT_Methodref(CONSTANT):
     method_name: str
     type: str
+    fq_class_name: str
     class_index: int
     name_and_type_index: int
 

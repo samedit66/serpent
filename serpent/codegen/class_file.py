@@ -15,7 +15,6 @@ from serpent.codegen.constpool import (
 from serpent.codegen.bytecommand import *
 from serpent.codegen.genbytecode import (
     LocalTable,
-    bytecode_size,
     generate_bytecode_for_method)
 from serpent.codegen.byte_utils import *
 
@@ -179,9 +178,9 @@ class FieldsTable:
                   tfield: TField,
                   constant_pool: ConstPool,
                   access_flags: int = ACC_PUBLIC) -> None:
-        name_index = constant_pool.add_constant_utf8(tfield.name)
+        name_index = constant_pool.add_utf8(tfield.name)
         descriptor = get_type_descriptor(tfield.expr_type)
-        descriptor_index = constant_pool.add_constant_utf8(descriptor)
+        descriptor_index = constant_pool.add_utf8(descriptor)
         field_info = FieldInfo(access_flags, name_index, descriptor_index)
         self.fields.append(field_info)
 

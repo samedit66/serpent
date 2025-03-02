@@ -680,7 +680,7 @@ def annotate_assignment(assignment: Assignment,
                     location=assignment.location)
 
             field_type = symtab.type_of_feature(feature_name)
-            left = TField(field_type, assignment.target)
+            left = TField(field_type, feature_name)
     elif isinstance(assignment.target, Expr):
         left = annotate_expr_with_types(
             assignment.target,

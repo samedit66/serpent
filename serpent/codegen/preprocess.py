@@ -15,7 +15,7 @@ from serpent.semantic_checker.type_check import (
     TBoolConst,
     TVoidConst)
 
-from serpent.codegen.constant_pool import ROOT_CLASS_NAME, get_type_descriptor
+from serpent.codegen.constpool import ROOT_CLASS_NAME, get_type_descriptor
 
 
 def default_value_for(typ: Type) -> TExpr:
