@@ -1044,7 +1044,32 @@ def make_codegen_class(flatten_cls: FlattenClass,
                         feature_node.language,
                         feature_node.alias))
             elif isinstance(feature_node, Method):
-                body = [
+                body = []
+                
+                # Нечто похожее на данный код дублируется в preprocess.py,
+                # по-хорошему от этого надо избавиться, но сейчас мне все равно...
+                return_type = symtab.type_of_feature(
+                    feature_name, self_called=True)
+                if return_type.full_name != "<VOID>":
+                    match return_type.full_name:
+                        case "INTEGER":
+                            default_value = TIntegerConst(return_type, 0)
+                        case "REAL":
+                            default_value = TRealConst(return_type, 0)
+                        case "STRING":
+                            default_value = TStringConst(return_type, "")
+                        case "CHARACTER":
+                            default_value = TCharacterConst(return_type, "")
+                        case "BOOLEAN":
+                            default_value = TBoolConst(return_type, False)
+                        case _:
+                            default_value = TVoidConst()
+                    body.append(
+                        TAssignment(
+                            TVariable(return_type, "local_Result"),
+                            default_value))
+
+                body.extend([
                     annotate_statement(
                         stmt,
                         feature_name,
@@ -1052,12 +1077,12 @@ def make_codegen_class(flatten_cls: FlattenClass,
                         hierarchy,
                         global_class_table,
                         flatten_class_mapping)
-                    for stmt in feature_node.do]
+                    for stmt in feature_node.do])
                 methods.append(
                     TUserDefinedMethod(
                         feature_name,
                         symtab.get_feature_signature(feature_name),
-                        symtab.type_of_feature(feature_name, self_called=True),
+                        return_type,
                         is_constructor,
                         symtab.get_variables(feature_name),
                         body))

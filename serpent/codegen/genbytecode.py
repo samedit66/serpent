@@ -78,10 +78,16 @@ def generate_bytecode_for_bool_const(
         desc="(I)V",
         fq_class_name=fq_class_name)
 
+    if const.value == 0:
+        push_command = Iconst_i(0)
+    elif const.value == 1:
+        push_command = Iconst_i(1)
+    else: assert False, f"Weird value for boolean const: {const.value}"
+
     bytecode = [
         New(class_index),
         Dup(),
-        Bipush(int(const.value)),
+        push_command,
         InvokeSpecial(methodref_idx)
     ]
 
@@ -457,15 +463,14 @@ def generate_bytecode_for_assignment(
     rvalue = tassignment.rvalue
 
     bytecode = []
-    bytecode.extend(generate_bytecode_for_expr(lvalue, fq_class_name, pool, local_table))
     bytecode.extend(generate_bytecode_for_expr(rvalue, fq_class_name, pool, local_table))
 
     match lvalue:
-        case TField() as tfield:
-            field_index = pool.find_fieldref(tfield.name, fq_class_name)
+        case TField(name=field_name):
+            field_index = pool.find_fieldref(field_name, fq_class_name)
             bytecode.append(PutField(field_index))
-        case TVariable() as tvariable:
-            variable_index = local_table[tvariable.name]
+        case TVariable(name=variable_name):
+            variable_index = local_table[variable_name]
             bytecode.append(Astore(variable_index))
 
     return bytecode
@@ -697,7 +702,8 @@ def generate_bytecode_for_method(
                 pool,
                 local_table))
 
-        if method.return_type.full_name != "<VOID>":
+        is_function = method.return_type.full_name != "<VOID>"
+        if is_function:
             bytecode.append(Aload(local_table["local_Result"]))
             bytecode.append(Areturn())
         else:

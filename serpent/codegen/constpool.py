@@ -446,9 +446,9 @@ def process_expression_literals(expr: TExpr, pool: ConstPool) -> None:
         case TStringConst(value=value):
             pool.add_string(value)
         case TCharacterConst(value=value):
-            raise NotImplementedError
+            pool.add_string(value)
         case TBoolConst(value=value):
-            raise NotImplementedError
+            pass
         case TFeatureCall(
                 expr_type=return_type,
                 feature_name=method_name,
