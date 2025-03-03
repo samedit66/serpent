@@ -354,42 +354,35 @@ def generate_bytecode_for_or_else(left: TExpr, right: TExpr, fq_class_name: str,
     Выражения распаковываются перед проверками, а итоговый результат оборачивается.
     """
     bytecode = []
+    
     # Вычисляем левый операнд и распаковываем
     bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, pool, local_table))
     bytecode.extend(unpack_boolean(pool))
-    bytecode.append(Dup())
-    index_ifne = len(bytecode)
-    bytecode.append(Ifne(0))  # placeholder
-    bytecode.append(Pop())
+
+    bytecode.append(Ifne(0))
+    ifne_index1 = len(bytecode) - 1
+
     # Вычисляем правый операнд и распаковываем
     bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, pool, local_table))
     bytecode.extend(unpack_boolean(pool))
-    index_goto = len(bytecode)
-    bytecode.append(Goto(0))  # placeholder
-    label_true_index = len(bytecode)
-    bytecode.append(Bipush(1))
-    end_index = len(bytecode)
-    # Патчинг переходов
-    positions = []
-    current_offset = 0
-    for instr in bytecode:
-        positions.append(current_offset)
-        current_offset += instr.size()
-    # Патчим Ifne: цель – переход к метке L_true (label_true_index)
-    target_offset = positions[label_true_index]
-    current_instr_offset = positions[index_ifne]
-    jump_instr_size = bytecode[index_ifne].size()
-    relative_offset = target_offset - (current_instr_offset + jump_instr_size)
-    bytecode[index_ifne] = Ifne(relative_offset)
-    # Патчим Goto: цель – конец блока (end_index)
-    target_offset = positions[end_index]
-    current_instr_offset = positions[index_goto]
-    jump_instr_size = bytecode[index_goto].size()
-    relative_offset = target_offset - (current_instr_offset + jump_instr_size)
-    bytecode[index_goto] = Goto(relative_offset)
-    
-    # Результат – int, его нужно обернуть в BOOLEAN.
+
+    bytecode.append(Ifne(0))
+    ifne_index2 = len(bytecode) - 1
+
+    bytecode.append(Iconst_i(0))
+
+    bytecode.append(Goto(0))
+    goto_index = len(bytecode) - 1
+
+    bytecode.append(Iconst_i(1))
+    bytecode.append(Nop())
+
+    bytecode[ifne_index1] = Ifne(bytesize(bytecode[ifne_index1:goto_index+1]))
+    bytecode[ifne_index2] = Ifne(bytesize(bytecode[ifne_index2:goto_index+1]))
+    bytecode[goto_index] = Goto(bytesize(bytecode[goto_index:len(bytecode)-1]))
+
     bytecode.extend(pack_boolean(pool))
+
     return bytecode
 
 
