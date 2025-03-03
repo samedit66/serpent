@@ -257,6 +257,9 @@ class MethodsTable:
         bytecode = generate_bytecode_for_method(tmethod, fq_class_name, constant_pool, local_table)
         code = CodeAttribute(code_name_index, local_table, bytecode)
 
+        if tmethod.method_name == "PERSON_calculate":
+            print(local_table.variables)
+
         method_info = MethodInfo(access_flags, name_index, descriptor_index, code)
         self.methods.append(method_info)
 

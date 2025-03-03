@@ -664,7 +664,7 @@ def annotate_assignment(assignment: Assignment,
         if symtab.has_local(context_method_name, local_name):
             variable_type = symtab.type_of_local(
                 context_method_name, local_name)
-            left = TVariable(variable_type, assignment.target)
+            left = TVariable(variable_type, local_name)
         else:
             feature_name = mangle_name(
                 assignment.target,

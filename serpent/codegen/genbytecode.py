@@ -554,6 +554,9 @@ def generate_bytecode_for_loop(
         generate_bytecode_for_stmts(
             tloop.body, fq_class_name, pool, local_table))
     
+    bytecode.extend(
+        generate_bytecode_for_expr(
+            tloop.until_cond, fq_class_name, pool, local_table))
     bytecode.append(Ifne(0))
     ifnes2_index = len(bytecode) - 1
     
@@ -629,21 +632,22 @@ def generate_bytecode_for_method(
         local_table: LocalTable)-> list[ByteCommand]:
     bytecode = []
 
-    if isinstance(method, TUserDefinedMethod):
-        bytecode.extend(
-            generate_bytecode_for_stmts(
-                method.body,
-                fq_class_name,
-                pool,
-                local_table))
+    match method:
+        case TUserDefinedMethod(body=body, return_type=return_type):
+            bytecode.extend(
+                generate_bytecode_for_stmts(
+                    body,
+                    fq_class_name,
+                    pool,
+                    local_table))
 
-        is_function = method.return_type.full_name != "<VOID>"
-        if is_function:
-            bytecode.append(Aload(local_table["local_Result"]))
-            bytecode.append(Areturn())
-        else:
-            bytecode.append(Return())
-    else:
-        ...
+            is_function = return_type.full_name != "<VOID>"
+            if is_function:
+                bytecode.append(Aload(local_table["local_Result"]))
+                bytecode.append(Areturn())
+            else:
+                bytecode.append(Return())
+        case TExternalMethod():
+            ...
     
     return bytecode
