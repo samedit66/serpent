@@ -457,7 +457,7 @@ def process_expression_literals(expr: TExpr, pool: ConstPool) -> None:
             if owner is None:
                 fq_class_name = None
             else:
-                fq_class_name = add_package_prefix(owner.expr_type.full_name)
+                fq_class_name = add_package_prefix(return_type.full_name)
 
             # Данный вызов необходим для проверки того, что
             # заданная константа уже существует, т.к. к этому моменту
@@ -527,15 +527,19 @@ def get_external_method_descriptor(args_types: list[Type], return_type: Type) ->
         add_package_prefix("BOOLEAN"): "I",
         add_package_prefix("CHARACTER"): "Ljava/lang/String;",
     }
+    default_object = "Lcom/eiffel/PLATFORM;"
 
     descriptors = []
     for typ in args_types + [return_type]:
         fq_class_name = add_package_prefix(typ.full_name)
-        if fq_class_name not in type_mapping:
-            raise CompilerError(
-                f"Unsupported type '{typ.name}' (fully-qualified: '{fq_class_name}'). "
-                "Allowed types for Java–Eiffel external methods are: INTEGER, FLOAT, STRING, BOOLEAN, and CHARACTER.")
-        descriptors.append(fq_class_name)
+        desc = type_mapping.get(fq_class_name, default_object)
+
+        #if fq_class_name not in type_mapping:
+        #    raise CompilerError(
+        #        f"Unsupported type '{typ.name}' (fully-qualified: '{fq_class_name}'). "
+        #        "Allowed types for Java–Eiffel external methods are: INTEGER, FLOAT, STRING, BOOLEAN, and CHARACTER.")
+
+        descriptors.append(desc)
 
     full_params_desc = "".join(descriptors[:-1])
     return_desc = descriptors[-1]
