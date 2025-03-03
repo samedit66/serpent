@@ -537,64 +537,40 @@ def generate_bytecode_for_loop(
         fq_class_name: str,
         pool: ConstPool,
         local_table: LocalTable) -> list[ByteCommand]:
-    """
-    Генерирует байт-код для цикла until.
+    bytecode = []
 
-    Структура TLoopStmt:
-      - init_stmts: инструкции инициализации (выполняются один раз до входа в цикл)
-      - until_cond: условие завершения цикла; цикл повторяется, пока условие ложно
-      - body: инструкции, повторяющиеся в цикле
+    bytecode.extend(
+        generate_bytecode_for_stmts(
+            tloop.init_stmts, fq_class_name, pool, local_table))
 
-    Алгоритм:
-      1. Выполнить инициализацию (init_stmts).
-      2. Отметить начало цикла (loop_start).
-      3. Выполнить тело цикла (body).
-      4. Вычислить условие until_cond.
-      5. Если until_cond == 0 (ложь), с помощью инструкции Ifeq перейти к началу цикла.
-         Если условие истинно, выполнение продолжается после цикла.
-    """
-    instrs = []
+    bytecode.extend(
+        generate_bytecode_for_expr(
+            tloop.until_cond, fq_class_name, pool, local_table))
+    bytecode.append(Ifne(0))
+    ifnes1_index = len(bytecode) - 1
+
+    loop_start_index = len(bytecode)
+    bytecode.extend(
+        generate_bytecode_for_stmts(
+            tloop.body, fq_class_name, pool, local_table))
     
-    # Генерируем код для инициализационных инструкций
-    for init_stmt in tloop.init_stmts:
-        init_code = generate_bytecode_for_stmt(init_stmt, fq_class_name, pool, local_table)
-        instrs.extend(init_code)
+    bytecode.append(Ifne(0))
+    ifnes2_index = len(bytecode) - 1
     
-    # Отмечаем начало цикла
-    loop_start_index = len(instrs)
+    bytecode.append(Goto(0))
+    goto_index = len(bytecode) - 1
+
+    bytecode.append(Nop())
+
+    bytecode[ifnes1_index] = Ifne(
+        bytesize(bytecode[ifnes1_index:goto_index+1]))
+    bytecode[ifnes2_index] = Ifne(
+        bytesize(bytecode[ifnes2_index:goto_index+1]))
     
-    # Генерируем код для тела цикла
-    for stmt in tloop.body:
-        body_code = generate_bytecode_for_stmt(stmt, fq_class_name, pool, local_table)
-        instrs.extend(body_code)
+    bytecode[goto_index] = Goto(
+        -bytesize(bytecode[loop_start_index:goto_index]))
     
-    # Генерируем код для вычисления условия until
-    cond_code = generate_bytecode_for_expr(tloop.until_cond, fq_class_name, pool, local_table)
-    cond_code.extend(unpack_boolean(pool))
-    instrs.extend(cond_code)
-    
-    # Добавляем инструкцию Ifeq с placeholder-смещением.
-    # Если значение условия (на вершине стека) равно 0, переходим к началу цикла.
-    patch_index = len(instrs)
-    instrs.append(Ifeq(0))  # placeholder для смещения
-    
-    # Второй проход: вычисляем байтовые позиции каждой инструкции для патчинга перехода.
-    positions = []
-    current_offset = 0
-    for instr in instrs:
-        positions.append(current_offset)
-        current_offset += instr.size()
-    
-    # Целевая позиция – начало цикла (loop_start_index)
-    target_offset = positions[loop_start_index]
-    current_instr_offset = positions[patch_index]
-    jump_instr_size = instrs[patch_index].size()
-    relative_offset = target_offset - (current_instr_offset + jump_instr_size)
-    
-    # Обновляем инструкцию перехода с корректным относительным смещением.
-    instrs[patch_index] = Ifeq(relative_offset)
-    
-    return instrs
+    return bytecode
 
 
 def generate_bytecode_for_routine_call(

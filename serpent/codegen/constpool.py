@@ -506,7 +506,7 @@ def process_statement_literals(stmt: TStatement, pool: ConstPool) -> None:
                 process_expression_literals(cond, pool)
                 for s in stmts: process_statement_literals(s, pool)
         case TLoopStmt(
-                init_smtmts=init_stmts,
+                init_stmts=init_stmts,
                 until_cond=until_cond,
                 body=body):
             for s in init_stmts:
@@ -516,7 +516,7 @@ def process_statement_literals(stmt: TStatement, pool: ConstPool) -> None:
                 process_statement_literals(s, pool)
         case TRoutineCall(feature_call=feature_call):
             process_expression_literals(feature_call, pool)
-        case _: assert False
+        case _: assert False, stmt
 
 
 def get_external_method_descriptor(args_types: list[Type], return_type: Type) -> str:
