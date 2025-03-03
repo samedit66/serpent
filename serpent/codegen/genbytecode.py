@@ -280,44 +280,22 @@ def generate_bytecode_for_or(left: TExpr,
     bytecode.extend(unpack_boolean(pool))
     # Складываем два int
     bytecode.append(Iadd())
+
+    bytecode.append(Ifne(0))
+    ifne_index = len(bytecode) - 1
+
+    bytecode.append(Iconst_i(1))
+
+    bytecode.append(Goto(0))
+    goto_index = len(bytecode) - 1
+
+    bytecode.append(Iconst_i(0))
     
-    # Ветвящаяся последовательность:
-    # 1. Dup – дублируем сумму
-    # 2. Ifgt (placeholder): если значение > 0, переходим к ветке, где будет Bipush(1)
-    # 3. Pop – удаляем оставшуюся копию суммы
-    # 4. Bipush(0) – результат false
-    # 5. Goto (placeholder) – переход к завершению
-    # 6. Bipush(1) – ветка, возвращающая true
-    bytecode.append(Dup())
-    index_ifgt = len(bytecode)
-    bytecode.append(Ifgt(0))  # placeholder
-    bytecode.append(Pop())
-    index_false = len(bytecode)
-    bytecode.append(Bipush(0))
-    index_goto = len(bytecode)
-    bytecode.append(Goto(0))  # placeholder
-    index_true = len(bytecode)
-    bytecode.append(Bipush(1))
-    # Патчинг переходов (вычисление смещений)
-    positions = []
-    current_offset = 0
-    for instr in bytecode:
-        positions.append(current_offset)
-        current_offset += instr.size()
-    total_size = current_offset
-    # Патчим Ifgt: цель – инструкция Bipush(1) (индекс index_true)
-    target_offset = positions[index_true]
-    current_instr_offset = positions[index_ifgt]
-    jump_instr_size = bytecode[index_ifgt].size()
-    relative_offset = target_offset - (current_instr_offset + jump_instr_size)
-    bytecode[index_ifgt] = Ifgt(relative_offset)
-    # Патчим Goto: цель – конец ветвящейся последовательности (total_size)
-    current_instr_offset = positions[index_goto]
-    jump_instr_size = bytecode[index_goto].size()
-    relative_offset = total_size - (current_instr_offset + jump_instr_size)
-    bytecode[index_goto] = Goto(relative_offset)
-    
-    # Итоговый результат – int (0 или 1). Оборачиваем его в BOOLEAN.
+    bytecode.append(Nop())
+
+    bytecode[ifne_index] = Ifne(bytesize(bytecode[ifne_index:goto_index+1]))
+    bytecode[goto_index] = Goto(bytesize(bytecode[goto_index:len(bytecode) - 1]))
+
     bytecode.extend(pack_boolean(pool))
     return bytecode
 
@@ -334,42 +312,9 @@ def generate_bytecode_for_and_then(left: TExpr,
     Выражения распаковываются перед проверками, а итоговый результат оборачивается.
     """
     bytecode = []
-    # Вычисляем левый операнд и распаковываем
-    bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, pool, local_table))
-    bytecode.extend(unpack_boolean(pool))
-    bytecode.append(Dup())
-    index_ifeq = len(bytecode)
-    bytecode.append(Ifeq(0))  # placeholder
-    bytecode.append(Pop())
-    # Вычисляем правый операнд и распаковываем
-    bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, pool, local_table))
-    bytecode.extend(unpack_boolean(pool))
-    index_goto = len(bytecode)
-    bytecode.append(Goto(0))  # placeholder
-    label_false_index = len(bytecode)
-    bytecode.append(Bipush(0))
-    end_index = len(bytecode)
-    # Патчинг переходов
-    positions = []
-    current_offset = 0
-    for instr in bytecode:
-        positions.append(current_offset)
-        current_offset += instr.size()
-    # Патчим Ifeq: цель – переход к метке L_false (label_false_index)
-    target_offset = positions[label_false_index]
-    current_instr_offset = positions[index_ifeq]
-    jump_instr_size = bytecode[index_ifeq].size()
-    relative_offset = target_offset - (current_instr_offset + jump_instr_size)
-    bytecode[index_ifeq] = Ifeq(relative_offset)
-    # Патчим Goto: цель – конец блока (end_index)
-    target_offset = positions[end_index]
-    current_instr_offset = positions[index_goto]
-    jump_instr_size = bytecode[index_goto].size()
-    relative_offset = target_offset - (current_instr_offset + jump_instr_size)
-    bytecode[index_goto] = Goto(relative_offset)
     
-    # Результат – int, оборачиваем его в BOOLEAN.
-    bytecode.extend(pack_boolean(pool))
+
+
     return bytecode
 
 
@@ -450,8 +395,27 @@ def generate_bytecode_for_expr(
             return generate_bytecode_for_field(texpr, fq_class_name, pool)
         case TVariable():
             return generate_bytecode_for_variable(texpr, local_table)
+        case TBinaryOp(
+                operator_name=operator_name,
+                left=left,
+                right=right):
+            match operator_name:
+                case "and":
+                    return generate_bytecode_for_and(
+                        left, right, fq_class_name, pool, local_table)
+                case "or":
+                    return generate_bytecode_for_or(
+                        left, right, fq_class_name, pool, local_table)
+                case "and then":
+                    return generate_bytecode_for_and_then(
+                        left, right, fq_class_name, pool, local_table)
+                case "or else":
+                    return generate_bytecode_for_or_else(
+                        left, right, fq_class_name, pool, local_table)
+                case _:
+                    raise NotImplementedError(operator_name)
         case _:
-            raise NotImplementedError
+            raise NotImplementedError(texpr)
 
 
 def generate_bytecode_for_assignment(

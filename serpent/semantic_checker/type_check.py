@@ -549,7 +549,7 @@ def annotate_binary_op(bin_op: BinaryOp,
             right=typed_right)
 
     return TBinaryOp(expr_type=expr_type,
-                     operator=operator_name,
+                     operator_name=operator_name,
                      left=typed_left,
                      right=typed_right)
 
