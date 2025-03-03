@@ -313,7 +313,33 @@ def generate_bytecode_for_and_then(left: TExpr,
     """
     bytecode = []
     
+    # Вычисляем левый операнд и распаковываем
+    bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
 
+    bytecode.append(Ifeq(0))
+    ifeq_index1 = len(bytecode) - 1
+
+    # Вычисляем правый операнд и распаковываем
+    bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
+
+    bytecode.append(Ifeq(0))
+    ifeq_index2 = len(bytecode) - 1
+
+    bytecode.append(Iconst_i(1))
+
+    bytecode.append(Goto(0))
+    goto_index = len(bytecode) - 1
+
+    bytecode.append(Iconst_i(0))
+    bytecode.append(Nop())
+
+    bytecode[ifeq_index1] = Ifeq(bytesize(bytecode[ifeq_index1:goto_index+1]))
+    bytecode[ifeq_index2] = Ifeq(bytesize(bytecode[ifeq_index2:goto_index+1]))
+    bytecode[goto_index] = Goto(bytesize(bytecode[goto_index:len(bytecode)-1]))
+
+    bytecode.extend(pack_boolean(pool))
 
     return bytecode
 
