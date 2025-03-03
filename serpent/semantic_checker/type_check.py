@@ -561,9 +561,9 @@ def annotate_unary_op(un_op: NotOp,
                       global_class_table: GlobalClassTable,
                       flatten_class_mapping: dict[str, FlattenClass]):
     assert isinstance(
-        operand, NotOp), "Only 'not' is supported as unary operator"
+        un_op, NotOp), "Only 'not' is supported as unary operator"
 
-    operand = un_op.operand
+    operand = un_op.argument
     typed_operand = annotate_expr_with_types(
         operand,
         symtab,
@@ -579,8 +579,8 @@ def annotate_unary_op(un_op: NotOp,
             location=operand.location)
 
     return TUnaryOp(expr_type=Type("BOOLEAN"),
-                    operator="not",
-                    operand=typed_operand)
+                    operator_name="not",
+                    argument=typed_operand)
 
 
 def annotate_expr_with_types(

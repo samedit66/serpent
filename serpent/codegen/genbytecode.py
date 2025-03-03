@@ -386,6 +386,37 @@ def generate_bytecode_for_or_else(left: TExpr, right: TExpr, fq_class_name: str,
     return bytecode
 
 
+def generate_bytecode_for_not(
+        texpr: TExpr,
+        fq_class_name: str,
+        pool: ConstPool,
+        local_table: LocalTable) -> list[ByteCommand]:
+    bytecode = []
+    
+    # Вычисляем левый операнд и распаковываем
+    bytecode.extend(generate_bytecode_for_expr(
+        texpr, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
+
+    bytecode.append(Ifeq(0))
+    ifeq_index = len(bytecode) - 1
+
+    bytecode.append(Iconst_i(0))
+
+    bytecode.append(Goto(0))
+    goto_index = len(bytecode) - 1
+
+    bytecode.append(Iconst_i(1))
+    bytecode.append(Nop())
+
+    bytecode[ifeq_index] = Ifeq(bytesize(bytecode[ifeq_index:goto_index+1]))
+    bytecode[goto_index] = Goto(bytesize(bytecode[goto_index:len(bytecode)-1]))
+
+    bytecode.extend(pack_boolean(pool))
+    
+    return bytecode
+
+
 def generate_bytecode_for_expr(
         texpr: TExpr,
         fq_class_name: str,
@@ -431,6 +462,15 @@ def generate_bytecode_for_expr(
                 case "or else":
                     return generate_bytecode_for_or_else(
                         left, right, fq_class_name, pool, local_table)
+                case _:
+                    raise NotImplementedError(operator_name)
+        case TUnaryOp(
+                operator_name=operator_name,
+                argument=argument):
+            match operator_name:
+                case "not":
+                    return generate_bytecode_for_not(
+                        argument, fq_class_name, pool, local_table);
                 case _:
                     raise NotImplementedError(operator_name)
         case _:
