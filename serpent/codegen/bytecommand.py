@@ -184,6 +184,28 @@ class Dup2(ByteCommand):
         return u1(self.tag)
 
 
+@dataclass(frozen=True)
+class Dupx1(ByteCommand):
+    
+    @cached_property
+    def tag(self) -> int:
+        return 0x5a
+    
+    def to_bytes(self) -> bytes:
+        return u1(self.tag)
+
+
+@dataclass(frozen=True)
+class Swap(ByteCommand):
+
+    @cached_property
+    def tag(self) -> int:
+        return 0x5f
+    
+    def to_bytes(self) -> bytes:
+        return u1(self.tag)
+
+
 # 5. Арифметические команды
 @dataclass(frozen=True)
 class Iadd(ByteCommand):
@@ -675,4 +697,3 @@ class Return(ByteCommand):
 
     def to_bytes(self) -> bytes:
         return u1(self.tag)
-    

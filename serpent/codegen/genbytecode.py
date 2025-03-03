@@ -3,7 +3,7 @@ from serpent.semantic_checker.type_check import *
 from serpent.codegen.constpool import (
     ConstPool,
     add_package_prefix,
-    get_type_descriptor)
+    PLATFORM_CLASS_NAME)
 from serpent.codegen.bytecommand import *
 
 
@@ -40,6 +40,7 @@ def generate_bytecode_for_integer_const(
 
     bytecode = [
         New(class_index),
+        Dup(),
         Bipush(const.value),
         InvokeSpecial(methodref_index)
     ]
@@ -59,6 +60,7 @@ def generate_bytecode_for_real_const(
 
     bytecode = [
         New(class_index),
+        Dup(),
         Bipush(const.value),
         InvokeSpecial(methodref_idx)
     ]
@@ -73,11 +75,12 @@ def generate_bytecode_for_bool_const(
     class_index = pool.find_class(fq_class_name)
     methodref_idx = pool.add_methodref(
         method_name="<init>",
-        desc="(Z)V",
+        desc="(I)V",
         fq_class_name=fq_class_name)
 
     bytecode = [
         New(class_index),
+        Dup(),
         Bipush(int(const.value)),
         InvokeSpecial(methodref_idx)
     ]
@@ -98,6 +101,7 @@ def generate_bytecode_for_string_const(
     string_index = pool.find_string(const.value)
     bytecode = [
         New(class_index),
+        Dup(),
         Ldc(string_index),
         InvokeSpecial(methodref_idx)
     ]
@@ -113,11 +117,12 @@ def generate_bytecode_for_character_const(
     methodref_idx = pool.add_methodref(
         method_name="<init>",
         desc="(Ljava/lang/String;)V",
-        fq_class_name=fq_class_name,)
+        fq_class_name=fq_class_name)
 
     string_index = pool.find_string(const.value)
     bytecode = [
         New(class_index),
+        Dup(),
         Ldc(string_index),
         InvokeSpecial(methodref_idx)
     ]
@@ -137,17 +142,13 @@ def generate_bytecode_for_create_expr(
     create_fq_class_name = add_package_prefix(tcreate_expr.expr_type.full_name)
     class_index = pool.find_class(create_fq_class_name)
     
-    bytecode = [
-        New(class_index),
-        Dup()
-    ]
+    bytecode = [New(class_index), Dup()]
 
     init_index = pool.add_methodref(
         method_name="<init>",
         desc="()V",
         fq_class_name=create_fq_class_name)
-    bytecode.extend(
-        [InvokeSpecial(init_index), Dup()])
+    bytecode.append(InvokeSpecial(init_index))
 
     for arg in tcreate_expr.arguments:
         arg_bytecode = generate_bytecode_for_expr(
@@ -196,7 +197,7 @@ def generate_bytecode_for_field(
         tfield: TField,
         fq_class_name: str,
         pool: ConstPool) -> list[ByteCommand]:
-    field_index = pool.add_fieldref(tfield.name, fq_class_name)
+    field_index = pool.find_fieldref(tfield.name, fq_class_name)
     return [GetField(field_index)]
 
 
@@ -207,7 +208,35 @@ def generate_bytecode_for_variable(
     return [Aload(variable_index)]
 
 
-def generate_bytecode_for_and(left: TExpr, right: TExpr, fq_class_name: str,
+def unpack_boolean(pool: ConstPool) -> list[ByteCommand]:
+    field_index = pool.add_fieldref(
+        field_name="raw_int",
+        desc="I",
+        fq_class_name=add_package_prefix(PLATFORM_CLASS_NAME))
+    return [GetField(field_index)]
+
+
+def pack_boolean(pool: ConstPool) -> list[ByteCommand]:
+    fq_class_name = add_package_prefix("BOOLEAN")
+    class_index = pool.find_class(fq_class_name)
+    methodref_idx = pool.add_methodref(
+        method_name="<init>",
+        desc="(I)V",
+        fq_class_name=fq_class_name)
+
+    bytecode = [
+        New(class_index),
+        Dupx1(),
+        Swap(),
+        InvokeSpecial(methodref_idx)
+    ]
+
+    return bytecode
+
+
+def generate_bytecode_for_and(left: TExpr,
+                              right: TExpr,
+                              fq_class_name: str,
                               pool: ConstPool,
                               local_table: LocalTable) -> list[ByteCommand]:
     """
@@ -216,24 +245,36 @@ def generate_bytecode_for_and(left: TExpr, right: TExpr, fq_class_name: str,
     """
     bytecode = []
     bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
     bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
     bytecode.append(Imul())
+    bytecode.extend(pack_boolean(pool))
     return bytecode
 
 
-def generate_bytecode_for_or(left: TExpr, right: TExpr, fq_class_name: str,
+def generate_bytecode_for_or(left: TExpr,
+                             right: TExpr,
+                             fq_class_name: str,
                              pool: ConstPool,
                              local_table: LocalTable) -> list[ByteCommand]:
     """
     Нестандартное логическое ИЛИ без короткого замыкания.
     Вычисляются оба операнда, затем они складываются.
     После этого, если сумма > 0 – результат истина (1), иначе ложь (0).
-    Для этого формируется ветвящаяся последовательность, которая патчится после вычисления байтовых позиций.
+    При этом выражения перед вычислениями распаковываются,
+    а итоговый int (0 или 1) оборачивается в BOOLEAN.
     """
     bytecode = []
+    # Вычисляем левый операнд и распаковываем
     bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
+    # Вычисляем правый операнд и распаковываем
     bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
+    # Складываем два int
     bytecode.append(Iadd())
+    
     # Ветвящаяся последовательность:
     # 1. Dup – дублируем сумму
     # 2. Ifgt (placeholder): если значение > 0, переходим к ветке, где будет Bipush(1)
@@ -251,7 +292,7 @@ def generate_bytecode_for_or(left: TExpr, right: TExpr, fq_class_name: str,
     bytecode.append(Goto(0))  # placeholder
     index_true = len(bytecode)
     bytecode.append(Bipush(1))
-    # Патчинг переходов
+    # Патчинг переходов (вычисление смещений)
     positions = []
     current_offset = 0
     for instr in bytecode:
@@ -269,34 +310,34 @@ def generate_bytecode_for_or(left: TExpr, right: TExpr, fq_class_name: str,
     jump_instr_size = bytecode[index_goto].size()
     relative_offset = total_size - (current_instr_offset + jump_instr_size)
     bytecode[index_goto] = Goto(relative_offset)
+    
+    # Итоговый результат – int (0 или 1). Оборачиваем его в BOOLEAN.
+    bytecode.extend(pack_boolean(pool))
     return bytecode
 
 
-def generate_bytecode_for_and_then(left: TExpr, right: TExpr, fq_class_name: str,
+def generate_bytecode_for_and_then(left: TExpr,
+                                   right: TExpr,
+                                   fq_class_name: str,
                                    pool: ConstPool,
                                    local_table: LocalTable) -> list[ByteCommand]:
     """
     Логическое И с коротким замыканием.
     Если левый операнд равен 0 (ложь), то вычисление правого пропускается и результат – ложь.
     Иначе левый отбрасывается, и результатом становится значение правого операнда.
-    
-    Структура:
-      - Вычисляем left
-      - Dup
-      - Ifeq (placeholder) – если left == 0, переход к метке L_false
-      - Pop – отбрасываем left (она равна истине)
-      - Вычисляем right
-      - Goto (placeholder) – переход к завершению (L_end)
-      - L_false: Bipush(0)
-      - L_end:
+    Выражения распаковываются перед проверками, а итоговый результат оборачивается.
     """
     bytecode = []
+    # Вычисляем левый операнд и распаковываем
     bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
     bytecode.append(Dup())
     index_ifeq = len(bytecode)
     bytecode.append(Ifeq(0))  # placeholder
     bytecode.append(Pop())
+    # Вычисляем правый операнд и распаковываем
     bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
     index_goto = len(bytecode)
     bytecode.append(Goto(0))  # placeholder
     label_false_index = len(bytecode)
@@ -308,8 +349,7 @@ def generate_bytecode_for_and_then(left: TExpr, right: TExpr, fq_class_name: str
     for instr in bytecode:
         positions.append(current_offset)
         current_offset += instr.size()
-    total_size = current_offset
-    # Патчим Ifeq: цель – метка L_false (label_false_index)
+    # Патчим Ifeq: цель – переход к метке L_false (label_false_index)
     target_offset = positions[label_false_index]
     current_instr_offset = positions[index_ifeq]
     jump_instr_size = bytecode[index_ifeq].size()
@@ -321,6 +361,9 @@ def generate_bytecode_for_and_then(left: TExpr, right: TExpr, fq_class_name: str
     jump_instr_size = bytecode[index_goto].size()
     relative_offset = target_offset - (current_instr_offset + jump_instr_size)
     bytecode[index_goto] = Goto(relative_offset)
+    
+    # Результат – int, оборачиваем его в BOOLEAN.
+    bytecode.extend(pack_boolean(pool))
     return bytecode
 
 
@@ -331,24 +374,19 @@ def generate_bytecode_for_or_else(left: TExpr, right: TExpr, fq_class_name: str,
     Логическое ИЛИ с коротким замыканием.
     Если левый операнд ненулевой (истина), то вычисление правого пропускается и результат – истина.
     Иначе левый отбрасывается, и результатом становится значение правого операнда.
-    
-    Структура:
-      - Вычисляем left
-      - Dup
-      - Ifne (placeholder) – если left != 0, переход к метке L_true
-      - Pop – отбрасываем left (она ложна)
-      - Вычисляем right
-      - Goto (placeholder) – переход к завершению (L_end)
-      - L_true: Bipush(1)
-      - L_end:
+    Выражения распаковываются перед проверками, а итоговый результат оборачивается.
     """
     bytecode = []
+    # Вычисляем левый операнд и распаковываем
     bytecode.extend(generate_bytecode_for_expr(left, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
     bytecode.append(Dup())
     index_ifne = len(bytecode)
     bytecode.append(Ifne(0))  # placeholder
     bytecode.append(Pop())
+    # Вычисляем правый операнд и распаковываем
     bytecode.extend(generate_bytecode_for_expr(right, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
     index_goto = len(bytecode)
     bytecode.append(Goto(0))  # placeholder
     label_true_index = len(bytecode)
@@ -360,8 +398,7 @@ def generate_bytecode_for_or_else(left: TExpr, right: TExpr, fq_class_name: str,
     for instr in bytecode:
         positions.append(current_offset)
         current_offset += instr.size()
-    total_size = current_offset
-    # Патчим Ifne: цель – метка L_true (label_true_index)
+    # Патчим Ifne: цель – переход к метке L_true (label_true_index)
     target_offset = positions[label_true_index]
     current_instr_offset = positions[index_ifne]
     jump_instr_size = bytecode[index_ifne].size()
@@ -373,6 +410,9 @@ def generate_bytecode_for_or_else(left: TExpr, right: TExpr, fq_class_name: str,
     jump_instr_size = bytecode[index_goto].size()
     relative_offset = target_offset - (current_instr_offset + jump_instr_size)
     bytecode[index_goto] = Goto(relative_offset)
+    
+    # Результат – int, его нужно обернуть в BOOLEAN.
+    bytecode.extend(pack_boolean(pool))
     return bytecode
 
 
@@ -477,6 +517,7 @@ def generate_bytecode_for_ifstmt(
         if branch_type in ('if', 'elseif'):
             # Генерируем код для вычисления условия
             cond_code = generate_bytecode_for_expr(cond, fq_class_name, pool, local_table)
+            cond_code.extend(unpack_boolean(pool))
             instrs.extend(cond_code)
             # Вставляем условный переход: если условие ложно, перейти к следующей ветке
             cond_jump_index = len(instrs)
@@ -565,6 +606,7 @@ def generate_bytecode_for_loop(
     
     # Генерируем код для вычисления условия until
     cond_code = generate_bytecode_for_expr(tloop.until_cond, fq_class_name, pool, local_table)
+    cond_code.extend(unpack_boolean(pool))
     instrs.extend(cond_code)
     
     # Добавляем инструкцию Ifeq с placeholder-смещением.
