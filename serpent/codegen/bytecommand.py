@@ -18,6 +18,17 @@ class ByteCommand(ABC):
         return len(self.to_bytes())
 
 
+@dataclass(frozen=True)
+class Nop(ByteCommand):
+
+    @cached_property
+    def tag(self) -> int:
+        return 0
+    
+    def to_bytes(self) -> bytes:
+        return u1(self.tag)
+
+
 # 1. Команды загрузки констант
 @dataclass(frozen=True)
 class Aconst_null:
@@ -357,6 +368,7 @@ class Iflt(ByteCommand):
     @cached_property
     def tag(self) -> int:
         return 0x55  # согласно описанию
+    
     def to_bytes(self) -> bytes:
         return merge_bytes(u1(self.tag), s2(self.offset))
 
@@ -429,7 +441,7 @@ class Goto(ByteCommand):
 
     @cached_property
     def tag(self) -> int:
-        return 0x07
+        return 0xa7
 
     def to_bytes(self) -> bytes:
         return merge_bytes(u1(self.tag), s2(self.offset))
