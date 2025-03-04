@@ -3,7 +3,10 @@ from serpent.semantic_checker.type_check import *
 from serpent.codegen.constpool import (
     ConstPool,
     add_package_prefix,
-    PLATFORM_CLASS_NAME)
+    make_fully_qualifed_name,
+    split_package_path,
+    PLATFORM_CLASS_NAME,
+    COMPILER_NAME)
 from serpent.codegen.bytecommand import *
 
 
@@ -169,6 +172,41 @@ def generate_bytecode_for_create_expr(
     return bytecode
 
 
+def unpack_builtin_type(type_name: str, pool: ConstPool) -> list[ByteCommand]:
+    match type_name:
+        case "STRING":
+            field_index = pool.add_fieldref(
+                field_name="raw_string",
+                desc="Ljava/lang/String;",
+                fq_class_name=add_package_prefix(PLATFORM_CLASS_NAME))
+        case "CHARACTER":
+            field_index = pool.add_fieldref(
+                field_name="raw_string",
+                desc="Ljava/lang/String;",
+                fq_class_name=add_package_prefix(PLATFORM_CLASS_NAME))
+        case "INTEGER":
+            field_index = pool.add_fieldref(
+                field_name="raw_int",
+                desc="I",
+                fq_class_name=add_package_prefix(PLATFORM_CLASS_NAME))
+        case "REAL":
+            field_index = pool.add_fieldref(
+                field_name="raw_float",
+                desc="F",
+                fq_class_name=add_package_prefix(PLATFORM_CLASS_NAME))
+        case "BOOLEAN":
+            field_index = pool.add_fieldref(
+                field_name="raw_int",
+                desc="I",
+                fq_class_name=add_package_prefix(PLATFORM_CLASS_NAME))
+        case _:
+            field_index = -1
+
+    if field_index == -1:
+        return []
+    return [GetField(field_index)]
+
+
 def generate_bytecode_for_feature_call(
         tfeature_call: TFeatureCall,
         fq_class_name: str,
@@ -186,10 +224,53 @@ def generate_bytecode_for_feature_call(
                 pool,
                 local_table))
 
+    # Для внешних методов необходимо добавить ссылку
+    # на this - он идет первым аргументов во всех внешних методах
+    if pool.is_external(tfeature_call.feature_name):
+        bytecode.append(Aload(0))
+
     for arg in tfeature_call.arguments:
         arg_bytecode = generate_bytecode_for_expr(
             arg, fq_class_name, pool, local_table)
         bytecode.extend(arg_bytecode)
+        
+        if pool.is_external(tfeature_call.feature_name):
+            bytecode.extend(
+                unpack_builtin_type(arg.expr_type.full_name, pool))
+
+    if pool.is_external(tfeature_call.feature_name):
+        alias = pool.get_alias_for_external_method(tfeature_call.feature_name)
+        parts = split_package_path(alias)
+        # 1. Получить имя и класс static метода
+        # Тут нет проверок на корректность задания alias,
+        # это должно проверяться на этапе заполнения таблицы констант
+        ext_method_name = parts[-1]
+        ext_fq_class_name = make_fully_qualifed_name(parts[:-1])
+        # 2. Сгенерировать вызов invokestatic
+        methodref_index = pool.find_methodref(
+            ext_method_name, fq_class_name=ext_fq_class_name)
+        bytecode.append(InvokeStatic(methodref_index))
+        # 3. Взависимости от возвращаемого значения метода,
+        #    произвести соотвествующую "распаковку" и "упаковку"
+        #    в зависимости от типа возвращаемого значения
+        return_type = tfeature_call.expr_type
+        if return_type.full_name != "<VOID>":
+            match return_type.full_name:
+                case "STRING":
+                    bytecode.extend(pack_builtin_type("STRING", pool))
+                case "CHARACTER":
+                    bytecode.extend(pack_builtin_type("CHARACTER", pool))
+                case "INTEGER":
+                    bytecode.extend(pack_builtin_type("INTEGER", pool))
+                case "REAL":
+                    bytecode.extend(pack_builtin_type("REAL", pool))
+                case "BOOLEAN":
+                    bytecode.extend(pack_builtin_type("BOOLEAN", pool))
+                case other_type:
+                    raise CompilerError(
+                        f"Return type '{other_type}' of external method '{ext_method_name}' ({alias}) is not supported. "
+                        "Please use one of the following types: STRING, CHARACTER, INTEGER, REAL, BOOLEAN.",
+                        source=COMPILER_NAME)
 
     if tfeature_call.owner is not None:
         fq_class_name = add_package_prefix(tfeature_call.owner.expr_type.full_name)
@@ -215,29 +296,11 @@ def generate_bytecode_for_variable(
 
 
 def unpack_boolean(pool: ConstPool) -> list[ByteCommand]:
-    field_index = pool.add_fieldref(
-        field_name="raw_int",
-        desc="I",
-        fq_class_name=add_package_prefix(PLATFORM_CLASS_NAME))
-    return [GetField(field_index)]
+    return unpack_builtin_type("BOOLEAN", pool)
 
 
 def pack_boolean(pool: ConstPool) -> list[ByteCommand]:
-    fq_class_name = add_package_prefix("BOOLEAN")
-    class_index = pool.find_class(fq_class_name)
-    methodref_idx = pool.add_methodref(
-        method_name="<init>",
-        desc="(I)V",
-        fq_class_name=fq_class_name)
-
-    bytecode = [
-        New(class_index),
-        Dupx1(),
-        Swap(),
-        InvokeSpecial(methodref_idx)
-    ]
-
-    return bytecode
+    return pack_builtin_type("BOOLEAN", pool)
 
 
 def generate_bytecode_for_and(left: TExpr,
@@ -648,6 +711,33 @@ def generate_bytecode_for_stmts(
     return bytecode
 
 
+def pack_builtin_type(type_name: str, pool: ConstPool) -> list[ByteCommand]:
+    this = f"L{add_package_prefix(PLATFORM_CLASS_NAME)};"
+    desc_mapping = {
+        "STRING": f"({this}Ljava/lang/String;)V",
+        "CHARACTER": f"({this}Ljava/lang/String;)V",
+        "INTEGER": f"({this}I)V",
+        "REAL": f"({this}F)V",
+        "BOOLEAN": f"({this}I)V"
+    }
+
+    fq_class_name = add_package_prefix(type_name)
+    class_index = pool.find_class(fq_class_name)
+    methodref_idx = pool.add_methodref(
+        method_name="<init>",
+        desc=desc_mapping[type_name],
+        fq_class_name=fq_class_name)
+
+    bytecode = [
+        New(class_index),
+        Dupx1(),
+        Swap(),
+        InvokeSpecial(methodref_idx)
+    ]
+
+    return bytecode
+
+
 def generate_bytecode_for_method(
         method: TMethod,
         fq_class_name: str,
@@ -670,7 +760,16 @@ def generate_bytecode_for_method(
                 bytecode.append(Areturn())
             else:
                 bytecode.append(Return())
-        case TExternalMethod():
-            ...
+        case TExternalMethod(method_name=method_name, return_type=return_type):
+            alias = pool.get_alias_for_external_method(method_name)
+            parts = split_package_path(alias)
+            ext_method_name = parts[-1]
+            ext_fq_class_name = make_fully_qualifed_name(parts[:-1])
+            if return_type.full_name not in [
+                    "STRING", "CHARACTER", "INTEGER", "REAL", "BOOLEAN"]:
+                raise CompilerError(
+                        f"Return type '{return_type.full_name}' of external method '{ext_method_name}' ({alias}) is not supported. "
+                        "Please use one of the following types: STRING, CHARACTER, INTEGER, REAL, BOOLEAN.",
+                        source=COMPILER_NAME)
     
     return bytecode

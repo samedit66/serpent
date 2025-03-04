@@ -44,6 +44,8 @@ class ConstPool:
     """Полное квалифицированное имя класса, для которого составляется таблица"""
     constants: list[CONSTANT] = field(default_factory=list)
     """Список всех констант, которые встречаются в теле класса"""
+    external_methods: dict[str, str] = field(default_factory=dict)
+    """Список всех внешних методов, нужен на этапе генерации TFeatureCall"""
 
     def __post_init__(self) -> None:
         self.add_class(self.fq_class_name)
@@ -55,6 +57,12 @@ class ConstPool:
         """Возвращает таблицу констант непосредственно в виде байтов"""
         return b"".join(const.to_bytes() for const in self.constants)
     
+    def is_external(self, method_name: str) -> bool:
+        return method_name in self.external_methods
+
+    def get_alias_for_external_method(self, method_name: str) -> str:
+        return self.external_methods[method_name]
+
     @property
     def count(self) -> int:
         return len(self.constants)
@@ -261,14 +269,19 @@ def make_const_pool(current: TClass, rest: list[TClass]) -> ConstPool:
 
     for method in current.methods:
         match method:
-            case TExternalMethod(return_type=return_type, parameters=parameters, alias=alias):
+            case TExternalMethod(
+                    method_name=method_name,
+                    return_type=return_type,
+                    parameters=parameters,
+                    alias=alias):
                 parts = split_package_path(alias)
                 if len(parts) < 2:
                     raise CompilerError(
                         f"Alias '{alias}' is not a correct reference to a Java method, "
                         f"see method '{method.method_name}' of class '{pool.fq_class_name}'",
                         source=COMPILER_NAME)
-                
+                # В обход всего и вся добавляем имя внешнего метода
+                pool.external_methods[method_name] = alias
                 java_method_name = parts[-1]
                 fq_class_name = make_fully_qualifed_name(parts[:-1])
                 external_method_type = get_external_method_descriptor(
@@ -526,12 +539,12 @@ def get_external_method_descriptor(args_types: list[Type], return_type: Type) ->
         add_package_prefix("BOOLEAN"): "I",
         add_package_prefix("CHARACTER"): "Ljava/lang/String;",
     }
-    default_object = "Lcom/eiffel/PLATFORM;"
+    this = f"L{add_package_prefix(PLATFORM_CLASS_NAME)};"
 
     descriptors = []
     for typ in args_types + [return_type]:
         fq_class_name = add_package_prefix(typ.full_name)
-        desc = type_mapping.get(fq_class_name, default_object)
+        desc = type_mapping.get(fq_class_name, this)
 
         #if fq_class_name not in type_mapping:
         #    raise CompilerError(
@@ -542,7 +555,7 @@ def get_external_method_descriptor(args_types: list[Type], return_type: Type) ->
 
     full_params_desc = "".join(descriptors[:-1])
     return_desc = descriptors[-1]
-    return f"({full_params_desc}){return_desc}"
+    return f"({this}{full_params_desc}){return_desc}"
 
 
 def pretty_print_const_pool(pool: ConstPool) -> None:
