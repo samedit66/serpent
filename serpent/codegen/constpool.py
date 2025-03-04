@@ -74,7 +74,7 @@ class ConstPool:
     
     def get_by_index(self, index: int) -> CONSTANT:
         """Возвращает константу по ее индексу в таблице"""
-        return self.constants[index]
+        return self.constants[index - 1]
 
     def find_constant(self, predicate) -> CONSTANT | None:
         """Возвращает первую константу, удовлетворяющую предикату"""
@@ -83,26 +83,30 @@ class ConstPool:
                 return constant
         return None
 
-    def find_methodref(self, method_name: str, fq_class_name: str | None = None) -> int:
+    def find_methodref(self, method_name: str, fq_class_name: str | None = None, desc: str | None = None) -> int:
         """Ищет номер константы Methodref с заданным именем метода"""
         fq_class_name = fq_class_name or self.fq_class_name
 
+        desc_check = lambda fr: desc is None or fr.type == desc
         methodref = self.find_constant(
             lambda c: isinstance(c, CONSTANT_Methodref)
                 and c.method_name == method_name
-                and c.fq_class_name == fq_class_name)
+                and c.fq_class_name == fq_class_name
+                and desc_check(c))
         assert methodref is not None, f"{fq_class_name}: {method_name}"
 
         return methodref.index
     
-    def find_fieldref(self, field_name: str, fq_class_name: str | None = None) -> int:
+    def find_fieldref(self, field_name: str, fq_class_name: str | None = None, desc: str | None = None) -> int:
         """Ищет номер константы Fieldref с заданным именем метода"""
         fq_class_name = fq_class_name or self.fq_class_name
 
+        desc_check = lambda fr: desc is None or fr.type == desc
         fieldref = self.find_constant(
             lambda c: isinstance(c, CONSTANT_Fieldref)
                 and c.field_name == field_name
-                and c.fq_class_name == fq_class_name)
+                and c.fq_class_name == fq_class_name
+                and desc_check(c))
         assert fieldref is not None, f"{fq_class_name}: {field_name}"
 
         return fieldref.index
@@ -128,6 +132,21 @@ class ConstPool:
             fq_class_name: str | None = None) -> int:
         try:
             methodref_index = self.find_methodref(method_name, fq_class_name)
+            constant: CONSTANT_Methodref = self.get_by_index(methodref_index)
+
+            if constant.type != desc:
+                class_index = self.add_class(fq_class_name)
+                nat_index = self.add_name_and_type(method_name, desc)
+                methodref = CONSTANT_Methodref(
+                    self.next_index,
+                    method_name,
+                    desc,
+                    fq_class_name,
+                    class_index,
+                    nat_index)
+                self.constants.append(methodref)
+                return methodref.index
+
             return methodref_index
         except AssertionError:
             class_index = self.add_class(fq_class_name)
@@ -149,6 +168,21 @@ class ConstPool:
             fq_class_name: str | None = None) -> int:
         try:
             fieldref_index = self.find_fieldref(field_name, fq_class_name)
+            constant: CONSTANT_Fieldref = self.get_by_index(fieldref_index)
+
+            if constant.type != desc:
+                class_index = self.add_class(fq_class_name)
+                nat_index = self.add_name_and_type(field_name, desc)
+                fieldref = CONSTANT_Fieldref(
+                    self.next_index,
+                    field_name,
+                    desc,
+                    fq_class_name,
+                    class_index,
+                    nat_index)
+                self.constants.append(fieldref)
+                return fieldref.index
+
             return fieldref_index
         except AssertionError:
             class_index = self.add_class(fq_class_name)

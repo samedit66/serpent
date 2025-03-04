@@ -256,31 +256,48 @@ class MethodsTable:
         local_table = LocalTable()
         bytecode = generate_bytecode_for_method(tmethod, fq_class_name, constant_pool, local_table)
         code = CodeAttribute(code_name_index, local_table, bytecode)
-
-        if tmethod.method_name == "PERSON_calculate":
-            print(local_table.variables)
-
         method_info = MethodInfo(access_flags, name_index, descriptor_index, code)
         self.methods.append(method_info)
 
 
-def make_default_integer_constructor(constant_pool: ConstPool) -> MethodInfo:
-    constructor_index = constant_pool.add_methodref(
-        method_name="<init>",
-        method_desc="(I)V",
-        fq_class_name=add_package_prefix("INTEGER"))
+def is_builtin_type(type_name: str) -> bool:
+    return (type_name in ["INTEGER", "REAL", "CHARACTER", "STRING", "BOOLEAN"]
+            or type_name.startswith("ARRAY["))
 
-    general_constructor_index = constant_pool.add_methodref(
+
+def make_default_constructor_for_builtin_type(
+        builtin_type_name: str, pool: ConstPool) -> MethodInfo:
+    desc_mapping = {
+        "STRING": f"(Ljava/lang/String;)V",
+        "CHARACTER": f"(Ljava/lang/String;)V",
+        "INTEGER": f"(I)V",
+        "REAL": f"(F)V",
+        "BOOLEAN": f"(I)V"
+    }
+
+    if builtin_type_name.startswith("ARRAY["):
+        desc = f"(II)V"
+    else:
+        desc = desc_mapping[builtin_type_name]
+
+    fq_class_name = add_package_prefix(builtin_type_name)
+
+    constructor_index = pool.add_methodref(
         method_name="<init>",
-        method_desc="(I)V",
+        desc=desc,
+        fq_class_name=fq_class_name)
+
+    general_constructor_index = pool.add_methodref(
+        method_name="<init>",
+        desc=desc,
         fq_class_name=add_package_prefix("GENERAL"))
 
     bytecode = [ InvokeSpecial(general_constructor_index) ]
-    code = CodeAttribute(constant_pool.add_utf8("Code"), LocalTable(), bytecode)
+    code = CodeAttribute(pool.add_utf8("Code"), LocalTable(), bytecode)
 
-    methodref = constant_pool.get_constant(general_constructor_index)
+    methodref = pool.get_by_index(constructor_index)
     nat_index = methodref.name_and_type_index
-    nat = constant_pool.get_constant(nat_index)
+    nat = pool.pool.get_by_index(nat_index)
 
     name_index = nat.name_const_index
     descriptor_index = nat.type_const_index
@@ -288,15 +305,81 @@ def make_default_integer_constructor(constant_pool: ConstPool) -> MethodInfo:
     return MethodInfo(ACC_PUBLIC, name_index, descriptor_index, code)
 
 
+def make_default_constructor(type_name: str, pool: ConstPool) -> MethodInfo:
+    fq_class_name = add_package_prefix(type_name)
+    desc = "()V"
+
+    constructor_index = pool.add_methodref(
+        method_name="<init>",
+        desc=desc,
+        fq_class_name=fq_class_name)
+
+    general_constructor_index = pool.add_methodref(
+        method_name="<init>",
+        desc=desc,
+        fq_class_name=add_package_prefix("GENERAL"))
+
+    bytecode = [ InvokeSpecial(general_constructor_index) ]
+    code = CodeAttribute(pool.add_utf8("Code"), LocalTable(), bytecode)
+
+    methodref = pool.get_by_index(constructor_index)
+    nat_index = methodref.name_and_type_index
+    nat = pool.get_by_index(nat_index)
+
+    name_index = nat.name_const_index
+    descriptor_index = nat.type_const_index
+
+    return MethodInfo(ACC_PUBLIC, name_index, descriptor_index, code)
+
+
+def make_default_constructors_for_general_class(pool: ConstPool) -> list[MethodInfo]:
+    descs = [
+        "(Ljava/lang/String;)V",
+        "(I)V",
+        "(F)V",
+        "(II)V",
+        "()V"
+    ]
+
+    fq_class_name = add_package_prefix("GENERAL")
+    fq_object_name = add_package_prefix("PLATFORM")
+
+    methods = []
+    for desc in descs:
+        constructor_index = pool.add_methodref(
+            method_name="<init>",
+            desc=desc,
+            fq_class_name=fq_class_name)
+        print(constructor_index)
+
+        general_constructor_index = pool.add_methodref(
+            method_name="<init>",
+            desc=desc,
+            fq_class_name=fq_object_name)
+
+        bytecode = [ InvokeSpecial(general_constructor_index) ]
+        code = CodeAttribute(pool.add_utf8("Code"), LocalTable(), bytecode)
+
+        methodref = pool.get_by_index(constructor_index)
+        nat = pool.get_by_index(methodref.name_and_type_index)
+
+        name_index = nat.name_const_index
+        descriptor_index = nat.type_const_index
+
+        methods.append(
+            MethodInfo(ACC_PUBLIC, name_index, descriptor_index, code))
+
+    return methods
+
+
 def make_class_file(
         current_class: TClass,
-        rest_classes: list[TClass],
-        super_class_index: int | None = None) -> ClassFile:
+        rest_classes: list[TClass]) -> ClassFile:
     constant_pool = make_const_pool(current_class, rest_classes)
 
-    if super_class_index is None:
-        constant_pool.add_class(add_package_prefix("Object", package="java.lang"))
-        super_class_index = 0
+    fq_general_class_name = add_package_prefix("GENERAL")
+    constant_pool.add_class(fq_general_class_name)
+    super_class_index = constant_pool.find_class(fq_general_class_name)
 
     fields_table = FieldsTable()
     for field in current_class.fields:
@@ -304,6 +387,20 @@ def make_class_file(
 
     fq_class_name = add_package_prefix(current_class.class_name)
     methods_table = MethodsTable()
+
+    if current_class.class_name == "GENERAL":
+        methods = make_default_constructors_for_general_class(
+            constant_pool)
+        methods_table.methods.extend(methods)
+    elif is_builtin_type(current_class.class_name):
+        default_constructor = make_default_constructor_for_builtin_type(
+            current_class.class_name, constant_pool)
+        methods_table.methods.append(default_constructor)
+    else:
+        default_constructor = make_default_constructor(
+            current_class.class_name, constant_pool)
+        methods_table.methods.append(default_constructor)
+
     for method in current_class.methods:
         methods_table.add_method(method, fq_class_name, constant_pool, ACC_PUBLIC)
 
