@@ -272,7 +272,7 @@ def make_const_pool(current: TClass, rest: list[TClass]) -> ConstPool:
                 java_method_name = parts[-1]
                 fq_class_name = make_fully_qualifed_name(parts[:-1])
                 external_method_type = get_external_method_descriptor(
-                    [param.expr_type for param in parameters], return_type)
+                    [param_type for (_, param_type) in parameters], return_type)
                 pool.add_methodref(
                     java_method_name, external_method_type, fq_class_name)
             case TUserDefinedMethod(body=body):
@@ -450,14 +450,13 @@ def process_expression_literals(expr: TExpr, pool: ConstPool) -> None:
         case TBoolConst(value=value):
             pass
         case TFeatureCall(
-                expr_type=return_type,
                 feature_name=method_name,
                 arguments=arguments,
                 owner=owner):
             if owner is None:
                 fq_class_name = None
             else:
-                fq_class_name = add_package_prefix(return_type.full_name)
+                fq_class_name = add_package_prefix(owner.expr_type.full_name)
 
             # Данный вызов необходим для проверки того, что
             # заданная константа уже существует, т.к. к этому моменту
