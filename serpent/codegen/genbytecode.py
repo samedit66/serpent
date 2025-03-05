@@ -13,9 +13,12 @@ from serpent.codegen.bytecommand import *
 @dataclass(frozen=True)
 class LocalTable:
     variables: list[tuple[str, int]] = field(default_factory=list)
+    is_static: bool = False
 
     @property
     def count(self) -> int:
+        if self.is_static:
+            return len(self.variables)
         return len(self.variables) + 1
 
     def __getitem__(self, variable_name: str) -> int:
@@ -715,11 +718,11 @@ def generate_bytecode_for_stmts(
 def pack_builtin_type(type_name: str, pool: ConstPool) -> list[ByteCommand]:
     this = f"L{add_package_prefix(PLATFORM_CLASS_NAME)};"
     desc_mapping = {
-        "STRING": f"({this}Ljava/lang/String;)V",
-        "CHARACTER": f"({this}Ljava/lang/String;)V",
-        "INTEGER": f"({this}I)V",
-        "REAL": f"({this}F)V",
-        "BOOLEAN": f"({this}I)V"
+        "STRING": f"(Ljava/lang/String;)V",
+        "CHARACTER": f"(Ljava/lang/String;)V",
+        "INTEGER": f"(I)V",
+        "REAL": f"(F)V",
+        "BOOLEAN": f"(I)V"
     }
 
     fq_class_name = add_package_prefix(type_name)
@@ -754,13 +757,6 @@ def generate_bytecode_for_method(
                     fq_class_name,
                     pool,
                     local_table))
-
-            is_function = return_type.full_name != "<VOID>"
-            if is_function:
-                bytecode.append(Aload(local_table["local_Result"]))
-                bytecode.append(Areturn())
-            else:
-                bytecode.append(Return())
         case TExternalMethod(method_name=method_name, return_type=return_type):
             alias = pool.get_alias_for_external_method(method_name)
             parts = split_package_path(alias)
@@ -773,4 +769,11 @@ def generate_bytecode_for_method(
                         "Please use one of the following types: STRING, CHARACTER, INTEGER, REAL, BOOLEAN.",
                         source=COMPILER_NAME)
     
+    is_function = return_type.full_name != "<VOID>"
+    if is_function:
+        bytecode.append(Aload(local_table["local_Result"]))
+        bytecode.append(Areturn())
+    else:
+        bytecode.append(Return())
+        
     return bytecode

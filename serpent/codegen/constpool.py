@@ -576,19 +576,17 @@ def get_external_method_descriptor(args_types: list[Type], return_type: Type) ->
     this = f"L{add_package_prefix(PLATFORM_CLASS_NAME)};"
 
     descriptors = []
-    for typ in args_types + [return_type]:
+    for typ in args_types:
         fq_class_name = add_package_prefix(typ.full_name)
         desc = type_mapping.get(fq_class_name, this)
-
-        #if fq_class_name not in type_mapping:
-        #    raise CompilerError(
-        #        f"Unsupported type '{typ.name}' (fully-qualified: '{fq_class_name}'). "
-        #        "Allowed types for Java–Eiffel external methods are: INTEGER, FLOAT, STRING, BOOLEAN, and CHARACTER.")
-
         descriptors.append(desc)
 
     full_params_desc = "".join(descriptors[:-1])
-    return_desc = descriptors[-1]
+    return_desc = (
+        "V"
+        if return_type.full_name == "<VOID>"
+        else this
+    )
     return f"({this}{full_params_desc}){return_desc}"
 
 

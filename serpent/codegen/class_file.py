@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
+import re
 
 from serpent.semantic_checker.type_check import (
     TClass,
@@ -11,7 +12,9 @@ from serpent.codegen.constpool import (
     add_package_prefix,
     get_type_descriptor,
     get_method_descriptor,
-    make_const_pool)
+    make_const_pool,
+    PLATFORM_CLASS_NAME,
+    ROOT_CLASS_NAME)
 from serpent.codegen.bytecommand import *
 from serpent.codegen.genbytecode import (
     LocalTable,
@@ -50,11 +53,11 @@ class ClassFile:
     
     @property
     def fields_count(self) -> int:
-        raise self.fields_table.count
+        return self.fields_table.count
 
     @property
     def methods_count(self) -> int:
-        raise self.methods_table.count
+        return self.methods_table.count
 
     @property
     def attributes_count(self) -> int:
@@ -237,6 +240,29 @@ class MethodInfo:
         return 1
     
 
+def count_method_args(descriptor: str) -> int:
+    # Извлекаем часть внутри скобок (список аргументов)
+    match = re.match(r"\((.*?)\)", descriptor)
+    if not match:
+        raise ValueError(f"Invalid method descriptor: {descriptor}")
+    
+    args_section = match.group(1)
+    count = 0
+    i = 0
+    
+    while i < len(args_section):
+        if args_section[i] == 'L':  # Класс (Lcom/example/ClassName;)
+            i = args_section.find(';', i) + 1
+        elif args_section[i] == '[':  # Массив (может быть многомерным)
+            while i < len(args_section) and args_section[i] == '[':
+                i += 1
+            # Следующий символ указывает на тип массива
+        i += 1
+        count += 1
+    
+    return count
+
+
 @dataclass(frozen=True)
 class MethodsTable:
     methods: list[MethodInfo] = field(default_factory=list)
@@ -253,9 +279,14 @@ class MethodsTable:
         name_index = constant_pool.add_utf8(tmethod.method_name)
         descriptor = get_method_descriptor([typ for (_, typ) in tmethod.parameters], tmethod.return_type)
         descriptor_index = constant_pool.add_utf8(descriptor)
-
         code_name_index = constant_pool.add_utf8("Code")
-        local_table = LocalTable()
+
+        if constant_pool.is_external(tmethod.method_name):
+            variables = [None] * count_method_args(descriptor)
+            local_table = LocalTable(variables)
+        else:
+            local_table = LocalTable()
+
         bytecode = generate_bytecode_for_method(tmethod, fq_class_name, constant_pool, local_table)
         code = CodeAttribute(code_name_index, local_table, bytecode)
         method_info = MethodInfo(access_flags, name_index, descriptor_index, code)
@@ -316,11 +347,20 @@ def make_default_constructor_for_builtin_type(
     bytecode.append(InvokeSpecial(general_constructor_index))
     bytecode.append(Return())
 
-    code = CodeAttribute(pool.add_utf8("Code"), LocalTable(), bytecode)
+    # Словарь для определения необходимого количества локальных переменных для каждого конструктора
+    required_locals = {
+         "(Ljava/lang/String;)V": 1,  # 1 параметр
+         "(I)V": 1,                   # 1 параметр
+         "(F)V": 1,                   # 1 параметр
+         "(II)V": 2,                  # 2 параметра
+         "()V": 0                     # никаких параметров
+    }
+    variables = [None] * required_locals[desc]
+    code = CodeAttribute(pool.add_utf8("Code"), LocalTable(variables), bytecode)
 
     methodref = pool.get_by_index(constructor_index)
     nat_index = methodref.name_and_type_index
-    nat = pool.pool.get_by_index(nat_index)
+    nat = pool.get_by_index(nat_index)
 
     name_index = nat.name_const_index
     descriptor_index = nat.type_const_index
@@ -370,6 +410,15 @@ def make_default_constructors_for_general_class(pool: ConstPool) -> list[MethodI
     fq_class_name = add_package_prefix("GENERAL")
     fq_object_name = add_package_prefix("PLATFORM")
 
+    # Словарь для определения необходимого количества локальных переменных для каждого конструктора
+    required_locals = {
+         "(Ljava/lang/String;)V": 1,  # 1 параметр
+         "(I)V": 1,                   # 1 параметр
+         "(F)V": 1,                   # 1 параметр
+         "(II)V": 2,                  # 2 параметра
+         "()V": 0                     # никаких параметров
+    }
+
     methods = []
     for desc in descs:
         constructor_index = pool.add_methodref(
@@ -403,11 +452,13 @@ def make_default_constructors_for_general_class(pool: ConstPool) -> list[MethodI
         # Для дескриптора "()V" дополнительных параметров нет
 
         bytecode.append(InvokeSpecial(platform_constructor_index))
-        set_default_values_index = pool.find_methodref("<set_default_values>")
+        set_default_values_index = pool.find_methodref("set_default_values")
+        bytecode.append(Aload(0))
         bytecode.append(InvokeVirtual(set_default_values_index))
         bytecode.append(Return())
 
-        code = CodeAttribute(pool.add_utf8("Code"), LocalTable(), bytecode)
+        variables = [None] * required_locals[desc]
+        code = CodeAttribute(pool.add_utf8("Code"), LocalTable(variables), bytecode)
 
         methodref = pool.get_by_index(constructor_index)
         nat = pool.get_by_index(methodref.name_and_type_index)
@@ -429,7 +480,11 @@ def make_class_file(
         entry_point_method: str | None = None) -> ClassFile:
     constant_pool = make_const_pool(current_class, rest_classes)
 
-    fq_general_class_name = add_package_prefix("GENERAL")
+    if current_class.class_name == ROOT_CLASS_NAME:
+        fq_general_class_name = add_package_prefix(PLATFORM_CLASS_NAME)
+    else:
+        fq_general_class_name = add_package_prefix(ROOT_CLASS_NAME)
+
     constant_pool.add_class(fq_general_class_name)
     super_class_index = constant_pool.find_class(fq_general_class_name)
 
@@ -440,7 +495,7 @@ def make_class_file(
     fq_class_name = add_package_prefix(current_class.class_name)
     methods_table = MethodsTable()
 
-    if current_class.class_name == "GENERAL":
+    if current_class.class_name == ROOT_CLASS_NAME:
         methods = make_default_constructors_for_general_class(
             constant_pool)
         methods_table.methods.extend(methods)
@@ -495,7 +550,7 @@ def make_class_file(
         
         code = CodeAttribute(
             constant_pool.add_utf8("Code"),
-            LocalTable(),
+            LocalTable(), # Не is_static == True, чтобы размер был как минимум 1 - под параметр args
             bytecode)
         
         methodref = constant_pool.get_by_index(main_index)
@@ -507,7 +562,8 @@ def make_class_file(
         main_method = MethodInfo(
             ACC_PUBLIC | ACC_STATIC | ACC_VARARGS,
             name_index,
-            descriptor_index, code)
+            descriptor_index,
+            code)
         methods_table.methods.append(main_method)
 
     return ClassFile(
