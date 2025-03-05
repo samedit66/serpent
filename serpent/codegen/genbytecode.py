@@ -295,6 +295,9 @@ def generate_bytecode_for_field(
 def generate_bytecode_for_variable(
         tvariable: TVariable,
         local_table: LocalTable) -> list[ByteCommand]:
+    print("-"*40)
+    print(local_table.variables)
+    print("*"*40)
     variable_index = local_table[tvariable.name]
     return [Aload(variable_index)]
 
@@ -560,6 +563,8 @@ def generate_bytecode_for_assignment(
             field_index = pool.find_fieldref(field_name, fq_class_name)
             bytecode.append(PutField(field_index))
         case TVariable(name=variable_name):
+            if variable_name == "local_c":
+                print(local_table.variables)
             variable_index = local_table[variable_name]
             bytecode.append(Astore(variable_index))
 

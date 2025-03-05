@@ -12,86 +12,37 @@ eiffel_code = """class ANY
 feature
     default_create do end
 
-    to_string, out: STRING
-    -- Строковое представление объекта.
-    -- По умолчанию возвращает строку с описанием местоположения
-    -- объекта в памяти.
-    external "Java"
-    alias "com.eiffel.Any.out"
-    end
-end
-
-class TEST
-feature
-    t: INTEGER
-    local
-        x: INTEGER
-        y: ARRAY[INTEGER]
-    do
-        x := (2 + 2) - (4 * 7) / 10
-    end
-end
-
-class Y end
-
-class ARRAY [E]
-feature
-    some: E
-    item (index: INTEGER): E do end
-    put (element: E; index: INTEGER) do end
-end
-
-class INTEGER
-feature
-    plus (other: like Current): like Current do end
-
-    minus (other: like Current): like Current do end
-
-    product (other: like Current): like Current do end
-
-    division (other: like Current): like Current do end
-
-    is_less (other: like Current): BOOLEAN do end
-
-    is_equal (other: like Current): BOOLEAN do end
-end
-
-class PERSON
-create
-    make
-feature
-    age: INTEGER
-    name: STRING
-feature
-    fuck do end
-
-    make (a_name: STRING; a_age: INTEGER)
-    do
-        age := a_age
-        name := a_name
-    end
-
-    java_method (a, b: INTEGER): INTEGER
+    print (s: STRING)
         external "Java"
-        alias "com.eiffel.PERSON_UTILS.method"
-    end
-
-    calculate (a, b: INTEGER): INTEGER
-    local
-        i: INTEGER
-        flag: BOOLEAN
-    do
-        i := java_method (1, 10)
+        alias "com.eiffel.PLATFORM.print"
     end
 end
 
-class STRING feature plus (other: like Current): like Current do end end
+class STRING end
 
 class REAL end
 
 class BOOLEAN end
 
 class NONE end
+
+class APPLICATION
+create make
+feature
+    make do
+        do_shit ("HELLO", "WORLD")
+    end
+
+    do_shit (a, b: STRING)
+    local
+        c: STRING
+    do
+        print (a)
+        c := "HELLO"
+        print (b)
+
+    end
+end
 """
 
 
@@ -185,20 +136,58 @@ if not error_collector.ok():
 
 from serpent.codegen.constpool import *
 
+
+main_class_name = "APPLICATION"
+main_routine = mangle_name(feature_name="make", class_name=main_class_name)
+
 general_class = make_general_class(tclasses)
 
-tc = tclasses[0]
-rest_classes = tclasses[1:]
+all_classes = [general_class, *tclasses]
+for i in range(len(all_classes)):
+    current = all_classes[i]
+    rest = [cls for cls in all_classes if cls.class_name != current.class_name]
 
-class_file = make_class_file(general_class, tclasses, entry_point_method=mangle_name("fuck", class_name="PERSON"))
-pretty_print_const_pool(class_file.constant_pool)
+    entry_method_name = (
+        None
+        if current.class_name != main_class_name
+        else main_routine)
+    class_file = make_class_file(
+        current,
+        rest,
+        entry_point_method=entry_method_name)
 
-#for i in range(1000):
-#    pretty_print_program(class_file.methods_table.methods[i].code.bytecode, class_file.constant_pool)
+    class_file_code = class_file.to_bytes()
+    with open(f"{current.class_name}.class", mode="wb") as f:
+        f.write(class_file_code)
 
-class_file_code = class_file.to_bytes()
-with open("PERSON.class", mode="wb") as f:
-    f.write(class_file_code)
+    if current.class_name == main_class_name:
+        with open(f"{current.class_name}.class", "rb") as f:
+            print(f.read().hex())
 
-with open("PERSON.class", "rb") as f:
-    print(f.read().hex())
+
+import os
+import shutil
+
+def move_class_files(src_dir, dst_dir):
+    # Создаем папку назначения, если она не существует
+    if not os.path.exists(dst_dir):
+        os.makedirs(dst_dir)
+    
+    # Перебираем все файлы в исходной директории
+    for filename in os.listdir(src_dir):
+        if filename.endswith('.class'):
+            src_path = os.path.join(src_dir, filename)
+            dst_path = os.path.join(dst_dir, filename)
+            
+            # Если файл с таким именем уже есть в папке назначения, удаляем его
+            if os.path.exists(dst_path):
+                os.remove(dst_path)
+            
+            # Перемещаем файл
+            shutil.move(src_path, dst_path)
+            print(f"Перемещен файл: {filename}")
+
+if __name__ == "__main__":
+    source_directory = "."  # Текущая директория
+    destination_directory = os.path.join(source_directory, "com/eiffel")
+    move_class_files(source_directory, destination_directory)
