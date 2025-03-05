@@ -275,8 +275,9 @@ def generate_bytecode_for_feature_call(
     if tfeature_call.owner is not None:
         fq_class_name = add_package_prefix(tfeature_call.owner.expr_type.full_name)
     methoref_idx = pool.find_methodref(tfeature_call.feature_name, fq_class_name)
-        
-    bytecode.append(InvokeVirtual(methoref_idx))
+    
+    if not pool.is_external(tfeature_call.feature_name):
+        bytecode.append(InvokeVirtual(methoref_idx))
     return bytecode
 
 
@@ -766,7 +767,7 @@ def generate_bytecode_for_method(
             ext_method_name = parts[-1]
             ext_fq_class_name = make_fully_qualifed_name(parts[:-1])
             if return_type.full_name not in [
-                    "STRING", "CHARACTER", "INTEGER", "REAL", "BOOLEAN"]:
+                    "STRING", "CHARACTER", "INTEGER", "REAL", "BOOLEAN", "<VOID>"]:
                 raise CompilerError(
                         f"Return type '{return_type.full_name}' of external method '{ext_method_name}' ({alias}) is not supported. "
                         "Please use one of the following types: STRING, CHARACTER, INTEGER, REAL, BOOLEAN.",
