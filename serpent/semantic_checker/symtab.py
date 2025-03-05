@@ -57,8 +57,8 @@ class Type:
     @property
     def full_name(self) -> str:
         if self.generics:
-            generics_str = ",".join(map(str, self.generics))
-            return f"{self.name}[{generics_str}]"
+            generics_str = "_".join(map(str, self.generics))
+            return f"{self.name}__{generics_str}]"
         return self.name
 
     def conforms_to(self, other: Type, hierarchy: ClassHierarchy) -> bool:
