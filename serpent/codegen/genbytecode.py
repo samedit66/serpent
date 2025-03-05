@@ -8,6 +8,7 @@ from serpent.codegen.constpool import (
     PLATFORM_CLASS_NAME,
     COMPILER_NAME)
 from serpent.codegen.bytecommand import *
+from serpent.codegen.preprocess import default_value_for
 
 
 @dataclass(frozen=True)
@@ -589,6 +590,8 @@ def generate_bytecode_for_ifstmt(
     bytecode.extend(
         generate_bytecode_for_expr(
             tifstmt.condition, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
+
     bytecode.append(Ifeq(0))
     ifeqs.append(len(bytecode) - 1)
     
@@ -642,6 +645,7 @@ def generate_bytecode_for_loop(
     bytecode.extend(
         generate_bytecode_for_expr(
             tloop.until_cond, fq_class_name, pool, local_table))
+    bytecode.extend(unpack_boolean(pool))
     bytecode.append(Ifne(0))
     ifnes1_index = len(bytecode) - 1
 
@@ -756,7 +760,18 @@ def generate_bytecode_for_method(
     bytecode = []
 
     match method:
-        case TUserDefinedMethod(body=body, return_type=return_type):
+        case TUserDefinedMethod(
+                body=body, return_type=return_type, variables=variables):
+            for vname, vtype in variables:
+                bytecode.extend(
+                    generate_bytecode_for_assignment(
+                        TAssignment(
+                            lvalue=TVariable(vtype, vname),
+                            rvalue=default_value_for(vtype)),
+                        fq_class_name=fq_class_name,
+                        pool=pool,
+                        local_table=local_table))
+
             bytecode.extend(
                 generate_bytecode_for_stmts(
                     body,
