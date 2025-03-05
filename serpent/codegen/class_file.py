@@ -21,6 +21,8 @@ from serpent.codegen.byte_utils import *
 
 ACC_PUBLIC = 0x0001
 ACC_SUPER = 0x0020
+ACC_STATIC = 0x0008
+ACC_VARARGS = 0x0080
 
 
 @dataclass(frozen=True)
@@ -374,7 +376,10 @@ def make_default_constructors_for_general_class(pool: ConstPool) -> list[MethodI
 
 def make_class_file(
         current_class: TClass,
-        rest_classes: list[TClass]) -> ClassFile:
+        rest_classes: list[TClass],
+        minor_version: int = 0,
+        major_version: int = 52,
+        entry_point_method: str | None = None) -> ClassFile:
     constant_pool = make_const_pool(current_class, rest_classes)
 
     fq_general_class_name = add_package_prefix("GENERAL")
@@ -406,9 +411,61 @@ def make_class_file(
 
     this_class_index = constant_pool.add_class(fq_class_name)
 
+    # Данный класс является точкой входа в программу:
+    # необходимо сгенерировать метод main, в который необходимо 
+    # добавить метод следующего вида:
+    # public static void main (String[] args) {
+    #     APPLICATION app = new APPLICATION();
+    #     app.make();     
+    # }
+    # Т.е. вызывается конструктор, указанный в качестве entry_point_method,
+    # и с него начинается выполнение всего приложения
+    if entry_point_method is not None:
+        root_class_name = fq_class_name
+
+        # TODO: проверка на то, что указанный метод,
+        # реально является конструктором, который не принимает никаких аргументов
+        main_index = constant_pool.add_methodref(
+            method_name="main",
+            desc="([Ljava/lang/String;)V",
+            fq_class_name=root_class_name)
+        root_class_index = constant_pool.find_class(root_class_name)
+        init_index = constant_pool.find_methodref(
+            method_name="<init>",
+            fq_class_name=root_class_name,
+            desc="()V")
+        entry_point_index = constant_pool.find_methodref(
+            method_name=entry_point_method,
+            fq_class_name=root_class_name,
+            desc="()V")
+        
+        bytecode = [
+            New(root_class_index),
+            Dup(),
+            InvokeSpecial(init_index),
+            InvokeVirtual(entry_point_index),
+            Return()]
+        
+        code = CodeAttribute(
+            constant_pool.add_utf8("Code"),
+            LocalTable(),
+            bytecode)
+        
+        methodref = constant_pool.get_by_index(main_index)
+        nat = constant_pool.get_by_index(methodref.name_and_type_index)
+
+        name_index = nat.name_const_index
+        descriptor_index = nat.type_const_index
+
+        main_method = MethodInfo(
+            ACC_PUBLIC | ACC_STATIC | ACC_VARARGS,
+            name_index,
+            descriptor_index, code)
+        methods_table.methods.append(main_method)
+
     return ClassFile(
-        minor_version=0,
-        major_version=52,
+        minor_version=minor_version,
+        major_version=major_version,
         constant_pool=constant_pool,
         access_flags=ACC_PUBLIC | ACC_SUPER,
         this_class=this_class_index,
