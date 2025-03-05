@@ -325,6 +325,34 @@ def make_const_pool(current: TClass, rest: list[TClass]) -> ConstPool:
             case TUserDefinedMethod(body=body):
                 for stmt in body:
                     process_statement_literals(stmt, pool)
+
+    # Данный ужас код решает следующую задачу:
+    # обнаружилась проблема неправильной компиляции внешних методов
+    # у методов, которые используются внутри класса, но не
+    # принадлжет ему, т.е. у другого объекта иного класса.
+    # Необходимо заполнить таблицу констант данными методами тоже
+    for cls in rest:
+        for method in cls.methods:
+            match method:
+                case TExternalMethod(
+                        method_name=method_name,
+                        return_type=return_type,
+                        parameters=parameters,
+                        alias=alias):
+                    parts = split_package_path(alias)
+                    if len(parts) < 2:
+                        raise CompilerError(
+                            f"Alias '{alias}' is not a correct reference to a Java method, "
+                            f"see method '{method.method_name}' of class '{pool.fq_class_name}'",
+                            source=COMPILER_NAME)
+                    # В обход всего и вся добавляем имя внешнего метода
+                    pool.external_methods[method_name] = alias
+                    java_method_name = parts[-1]
+                    fq_class_name = make_fully_qualifed_name(parts[:-1])
+                    external_method_type = get_external_method_descriptor(
+                        [param_type for (_, param_type) in parameters], return_type)
+                    pool.add_methodref(
+                        java_method_name, external_method_type, fq_class_name)
         
     return pool
 
@@ -582,11 +610,15 @@ def get_external_method_descriptor(args_types: list[Type], return_type: Type) ->
         descriptors.append(desc)
 
     full_params_desc = "".join(descriptors)
-    return_desc = (
-        "V"
-        if return_type.full_name == "<VOID>"
-        else this
-    )
+    if return_type.full_name == "<VOID>":
+        return_desc = "V"
+    else:
+        fq_type_name = add_package_prefix(return_type.full_name)
+        if fq_type_name in type_mapping:
+            return_desc = type_mapping[fq_type_name]
+        else:
+            return_desc = this
+
     return f"({this}{full_params_desc}){return_desc}"
 
 

@@ -93,6 +93,16 @@ class ClassFile:
         #   u2 attributes_count (0)
         def encode_code_attribute(code: CodeAttribute) -> bytes:
             # Вычисляем длину байткода как сумму размеров всех команд
+            code_length = 0
+            for cmd in code.bytecode:
+                try:
+                    code_length += cmd.size()
+                except Exception as err:
+                    print(err)
+                    print(cmd)
+                    import sys
+                    sys.exit(1)
+
             code_length = sum(cmd.size() for cmd in code.bytecode)
             # Длина атрибута: 2 (max_stack) + 2 (max_locals) + 4 (code_length) +
             # code_length + 2 (exception_table_length) + 2 (attributes_count) = 12 + code_length
@@ -281,14 +291,11 @@ class MethodsTable:
         descriptor_index = constant_pool.add_utf8(descriptor)
         code_name_index = constant_pool.add_utf8("Code")
 
-        if constant_pool.is_external(tmethod.method_name):
-            variables = [None] * count_method_args(descriptor)
-            local_table = LocalTable(variables)
-        else:
-            variables = [
-                (param[0], i)
-                for i, param in enumerate(tmethod.parameters, start=1)]
-            local_table = LocalTable(variables)
+        start = 0 if constant_pool.is_external(tmethod.method_name) else 1
+        variables = [
+            (param[0], i)
+            for i, param in enumerate(tmethod.parameters, start=start)]
+        local_table = LocalTable(variables)
 
         bytecode = generate_bytecode_for_method(tmethod, fq_class_name, constant_pool, local_table)
         if tmethod.method_name == "APPLICATION_do_shit":

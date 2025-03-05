@@ -31,7 +31,7 @@ class Nop(ByteCommand):
 
 # 1. Команды загрузки констант
 @dataclass(frozen=True)
-class Aconst_null:
+class Aconst_null(ByteCommand):
     
     @cached_property
     def tag(self) -> int:

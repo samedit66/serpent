@@ -110,7 +110,7 @@ def generate_bytecode_for_string_const(
         desc="(Ljava/lang/String;)V",
         fq_class_name=fq_class_name)
     
-    string_index = pool.find_string(const.value)
+    string_index = pool.add_string(const.value)
     bytecode = [
         New(class_index),
         Dup(),
@@ -776,7 +776,10 @@ def generate_bytecode_for_method(
     
     is_function = return_type.full_name != "<VOID>"
     if is_function:
-        bytecode.append(Aload(local_table["local_Result"]))
+        if pool.is_external(method_name):
+            bytecode.append(Aconst_null())
+        else:
+            bytecode.append(Aload(local_table["local_Result"]))
         bytecode.append(Areturn())
     else:
         bytecode.append(Return())
