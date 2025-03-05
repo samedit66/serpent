@@ -125,6 +125,18 @@ class Iload(ByteCommand):
 
 
 @dataclass(frozen=True)
+class Fload(ByteCommand):
+    var_index: int
+
+    @cached_property
+    def tag(self) -> int:
+        return 0x17
+
+    def to_bytes(self) -> bytes:
+        return merge_bytes(u1(self.tag), u1(self.var_index))
+
+
+@dataclass(frozen=True)
 class Aload(ByteCommand):
     var_index: int
 

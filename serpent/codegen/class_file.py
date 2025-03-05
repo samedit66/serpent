@@ -294,7 +294,28 @@ def make_default_constructor_for_builtin_type(
         desc=desc,
         fq_class_name=add_package_prefix("GENERAL"))
 
-    bytecode = [ InvokeSpecial(general_constructor_index) ]
+    bytecode = []
+    # Загружаем указатель на текущий объект (this)
+    bytecode.append(Aload(0))
+    # В зависимости от дескриптора загружаем дополнительные параметры:
+    if desc == "(Ljava/lang/String;)V":
+        # Параметр типа String находится в локальной переменной 1
+        bytecode.append(Aload(1))
+    elif desc == "(I)V":
+        # Параметр типа int находится в локальной переменной 1
+        bytecode.append(Iload(1))
+    elif desc == "(F)V":
+        # Параметр типа float находится в локальной переменной 1
+        bytecode.append(Fload(1))
+    elif desc == "(II)V":
+        # Два параметра типа int находятся в локальных переменных 1 и 2
+        bytecode.append(Iload(1))
+        bytecode.append(Iload(2))
+    # Для дескриптора "()V" дополнительных параметров нет
+
+    bytecode.append(InvokeSpecial(general_constructor_index))
+    bytecode.append(Return())
+
     code = CodeAttribute(pool.add_utf8("Code"), LocalTable(), bytecode)
 
     methodref = pool.get_by_index(constructor_index)
@@ -321,7 +342,10 @@ def make_default_constructor(type_name: str, pool: ConstPool) -> MethodInfo:
         desc=desc,
         fq_class_name=add_package_prefix("GENERAL"))
 
-    bytecode = [ InvokeSpecial(general_constructor_index) ]
+    bytecode = [
+        Aload(0),
+        InvokeSpecial(general_constructor_index),
+        Return() ]
     code = CodeAttribute(pool.add_utf8("Code"), LocalTable(), bytecode)
 
     methodref = pool.get_by_index(constructor_index)
@@ -352,14 +376,37 @@ def make_default_constructors_for_general_class(pool: ConstPool) -> list[MethodI
             method_name="<init>",
             desc=desc,
             fq_class_name=fq_class_name)
-        print(constructor_index)
 
-        general_constructor_index = pool.add_methodref(
+        platform_constructor_index = pool.add_methodref(
             method_name="<init>",
             desc=desc,
             fq_class_name=fq_object_name)
 
-        bytecode = [ InvokeSpecial(general_constructor_index) ]
+        bytecode = []
+        # Загружаем указатель на текущий объект (this)
+        bytecode.append(Aload(0))
+
+        # В зависимости от дескриптора загружаем дополнительные параметры:
+        if desc == "(Ljava/lang/String;)V":
+            # Параметр типа String находится в локальной переменной 1
+            bytecode.append(Aload(1))
+        elif desc == "(I)V":
+            # Параметр типа int находится в локальной переменной 1
+            bytecode.append(Iload(1))
+        elif desc == "(F)V":
+            # Параметр типа float находится в локальной переменной 1
+            bytecode.append(Fload(1))
+        elif desc == "(II)V":
+            # Два параметра типа int находятся в локальных переменных 1 и 2
+            bytecode.append(Iload(1))
+            bytecode.append(Iload(2))
+        # Для дескриптора "()V" дополнительных параметров нет
+
+        bytecode.append(InvokeSpecial(platform_constructor_index))
+        set_default_values_index = pool.find_methodref("<set_default_values>")
+        bytecode.append(InvokeVirtual(set_default_values_index))
+        bytecode.append(Return())
+
         code = CodeAttribute(pool.add_utf8("Code"), LocalTable(), bytecode)
 
         methodref = pool.get_by_index(constructor_index)
