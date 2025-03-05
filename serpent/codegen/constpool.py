@@ -581,7 +581,7 @@ def get_external_method_descriptor(args_types: list[Type], return_type: Type) ->
         desc = type_mapping.get(fq_class_name, this)
         descriptors.append(desc)
 
-    full_params_desc = "".join(descriptors[:-1])
+    full_params_desc = "".join(descriptors)
     return_desc = (
         "V"
         if return_type.full_name == "<VOID>"

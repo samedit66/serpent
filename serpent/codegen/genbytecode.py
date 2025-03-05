@@ -775,5 +775,5 @@ def generate_bytecode_for_method(
         bytecode.append(Areturn())
     else:
         bytecode.append(Return())
-        
+
     return bytecode
