@@ -218,19 +218,20 @@ def generate_bytecode_for_feature_call(
     bytecode = []
     
     if tfeature_call.owner is None:
-        bytecode.append(Aload(0))
+        this = [Aload(0)]
+        bytecode.extend(this)
     else:
-        bytecode.extend(
-            generate_bytecode_for_expr(
+        this = generate_bytecode_for_expr(
                 tfeature_call.owner,
                 fq_class_name,
                 pool,
-                local_table))
+                local_table)
+        bytecode.extend(this)
 
     # Для внешних методов необходимо добавить ссылку
     # на this - он идет первым аргументов во всех внешних методах
     if pool.is_external(tfeature_call.feature_name):
-        bytecode.append(Aload(0))
+        bytecode.extend(this)
 
     for arg in tfeature_call.arguments:
         arg_bytecode = generate_bytecode_for_expr(
