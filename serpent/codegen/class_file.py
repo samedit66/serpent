@@ -461,12 +461,20 @@ def make_default_constructors_for_general_class(pool: ConstPool) -> list[MethodI
             # Два параметра типа int находятся в локальных переменных 1 и 2
             bytecode.append(Iload(1))
             bytecode.append(Iload(2))
+        elif desc == "()V":
+            pass
+        else: assert False, desc
         # Для дескриптора "()V" дополнительных параметров нет
 
         bytecode.append(InvokeSpecial(platform_constructor_index))
-        set_default_values_index = pool.find_methodref("set_default_values")
-        bytecode.append(Aload(0))
-        bytecode.append(InvokeVirtual(set_default_values_index))
+
+        # Для объектов дополнительно необходимо проинициализировать
+        # значения всех полей по умолчанию
+        if desc == "()V":
+            set_default_values_index = pool.find_methodref("set_default_values")
+            bytecode.append(Aload(0))
+            bytecode.append(InvokeVirtual(set_default_values_index))
+
         bytecode.append(Return())
 
         variables = [None] * required_locals[desc]

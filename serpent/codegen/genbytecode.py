@@ -222,19 +222,9 @@ def generate_bytecode_for_feature_call(
         this = [Aload(0)]
         bytecode.extend(this)
     else:
-        mangled_name = tfeature_call.feature_name
-        print(f"MANGLED NAME: {mangled_name}")
-        print(tfeature_call.owner)
-        precursor_prefix = "Precursor_"
-        if mangled_name.startswith(precursor_prefix):
-            mangled_name = mangled_name[len(precursor_prefix) + 1:]
-        class_index = mangled_name.index("_") + 1
-        class_name = mangled_name[:class_index-1]
-        owner_fq_class_name = add_package_prefix(class_name)
-        print(f"NAAAAAMEEE: {owner_fq_class_name}")
         this = generate_bytecode_for_expr(
                 tfeature_call.owner,
-                owner_fq_class_name,
+                fq_class_name,
                 pool,
                 local_table)
         bytecode.extend(this)
@@ -299,11 +289,21 @@ def generate_bytecode_for_feature_call(
 def generate_bytecode_for_field(
         tfield: TField,
         fq_class_name: str,
-        pool: ConstPool) -> list[ByteCommand]:
+        pool: ConstPool,
+        local_table: LocalTable) -> list[ByteCommand]:
+    bytecode = []
     if tfield.owner is not None:
         fq_class_name = add_package_prefix(tfield.owner.expr_type.full_name)
+        bytecode.append(
+            generate_bytecode_for_expr(
+                tfield.owner,
+                fq_class_name,
+                pool,
+                local_table))
+    else:
+        bytecode.append(Aload(0))
     field_index = pool.find_fieldref(tfield.name, fq_class_name)
-    return [GetField(field_index)]
+    return [*bytecode, GetField(field_index)]
 
 
 def generate_bytecode_for_variable(
@@ -528,7 +528,8 @@ def generate_bytecode_for_expr(
             return generate_bytecode_for_feature_call(
                 texpr, fq_class_name, pool, local_table)
         case TField():
-            return generate_bytecode_for_field(texpr, fq_class_name, pool)
+            return generate_bytecode_for_field(
+                texpr, fq_class_name, pool, local_table)
         case TVariable():
             return generate_bytecode_for_variable(texpr, local_table)
         case TBinaryOp(
