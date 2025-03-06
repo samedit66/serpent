@@ -246,7 +246,7 @@ class Imul(ByteCommand):
 
     @cached_property
     def tag(self) -> int:
-        return 0x64
+        return 0x68
 
     def to_bytes(self) -> bytes:
         return u1(self.tag)
@@ -257,7 +257,7 @@ class Isub(ByteCommand):
 
     @cached_property
     def tag(self) -> int:
-        return 0x68
+        return 0x64
 
     def to_bytes(self) -> bytes:
         return u1(self.tag)

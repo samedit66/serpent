@@ -805,7 +805,7 @@ def generate_bytecode_for_method(
     
     is_function = return_type.full_name != "<VOID>"
     if is_function:
-        if pool.is_external(method_name):
+        if pool.is_external(method.method_name):
             bytecode.append(Aconst_null())
         else:
             bytecode.append(Aload(local_table["local_Result"]))
