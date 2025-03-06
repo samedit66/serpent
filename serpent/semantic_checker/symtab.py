@@ -291,7 +291,7 @@ def features_of_flatten_class(
     typ = type_of_class_decl_type(actual_type)
 
     precursors = [
-        copy.replace(f, name=f"Precursor_{typ.full_name}_{f.name}")
+        copy.replace(f, name=f"Precursor_{f.from_class}_{f.name}")
         for f in flatten_cls.precursors
     ]
     inherited = [

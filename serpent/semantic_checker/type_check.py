@@ -302,10 +302,33 @@ def annotate_precursor_call(
         flatten_class_mapping: dict[str, FlattenClass]) -> TFeatureCall:
     # Получаем класс и имя фичи, в контексте которой Precursor был вызван
     class_name = class_name_of_mangled_name(context_method_name)
-    feature_name = unmangle_name(context_method_name)
 
-    class_name, feature_name = symtab.unmangle_name(
-        symtab.method_name)
+    # При переопредлении методов, на уровне синтаксического дерева,
+    # чтобы сохранить полиморфизм (т.е. возможно родительским классам
+    # вызывать переопределенные у детей методы), например,
+    # class A
+    # feature f do ... end
+    # end
+    # class B
+    # feature g (a: A) do a.f end
+    # end
+    # class C
+    # inherit A redefine f end
+    # feature f do print ("REDEFINED") end
+    # end
+    # В данном случае, если передать объект типа С
+    # на место параметра a, то вызовется переопределенная версия из C.
+    # В результате было принято решение копировать в родительский узел 
+    # метода родителя узел переопределенного тела метода ребенка,
+    # однако на этом этапе копировался и Precusor, что приводило к попытке
+    # вызывать прекурсор родителя родителя и так далее. Поэтому мы проверяем,
+    # что имя типа symtab совпадает с полученным именем класса из контекста метода,
+    # иначе меняем их таким образом, чтобы ничего не поломалось
+    unmangled_feature_name = unmangle_name(context_method_name)
+    if class_name != symtab.full_type_name:
+        class_name = symtab.full_type_name
+        context_method_name = mangle_name(
+            unmangled_feature_name, class_name=class_name)
 
     # Получаем имена всех родителей
     parents_names = [
@@ -315,41 +338,46 @@ def annotate_precursor_call(
 
     # Формируем предполагаемый список возможных родительских фич
     possible_precursors = [
-        f"Precursor_{parent_name}_{feature_name}"
+        f"Precursor_{parent_name}_{unmangled_feature_name}"
         for parent_name in parents_names]
 
+    print(f"SYMTAB TYPE: {symtab.full_type_name}, CLASS NAME: {class_name}")
+    print(f"PRECURSOR: {context_method_name}")
+    print(f"POSSIBLE PRECURSORS: {possible_precursors}")
+    #print([f for f in symtab.feature_node_map.keys()])
     # Получаем реально определенные прекурсоры
     precursors = [
         precursor_name
         for precursor_name in possible_precursors
         if symtab.has_feature(precursor_name, self_called=True)]
+    print(precursors)
 
     if len(precursors) == 0:
         raise CompilerError(
-            f"No Precursor feature available for '{feature_name}' -- are you sure you've redefined it?",
+            f"No Precursor feature available for '{unmangled_feature_name}' -- are you sure you've redefined it?",
             location=precursor_call.location)
     elif len(precursors) == 1:
         precursor_name = precursors[0]
 
         parent_name = precursor_call.ancestor_name
         if parent_name is not None:
-            given_precursor_name = f"Precursor_{parent_name}_{feature_name}"
+            given_precursor_name = f"Precursor_{parent_name}_{unmangled_feature_name}"
             if given_precursor_name != precursor_name:
                 raise CompilerError(
-                    f"Precursor mismatch for {feature_name} -- given class '{parent_name}' does not exist or has no such feature",
+                    f"Precursor mismatch for {unmangled_feature_name} -- given class '{parent_name}' does not exist or has no such feature",
                     location=precursor_call.location)
             precursor_name = given_precursor_name
     else:
         parent_name = precursor_call.ancestor_name
         if parent_name is None:
             raise CompilerError(
-                f"Ambiguous Precursor call for '{feature_name}': ancestor not specified",
+                f"Ambiguous Precursor call for '{unmangled_feature_name}': ancestor not specified",
                 location=precursor_call.location)
 
-        given_precursor_name = f"Precursor_{parent_name}_{feature_name}"
+        given_precursor_name = f"Precursor_{parent_name}_{unmangled_feature_name}"
         if given_precursor_name not in precursors:
             raise CompilerError(
-                f"Invalid Precursor for '{feature_name}': no Precursor for ancestor '{parent_name}' found",
+                f"Invalid Precursor for '{unmangled_feature_name}': no Precursor for ancestor '{parent_name}' found",
                 location=precursor_call.location)
 
         precursor_name = given_precursor_name
@@ -366,22 +394,23 @@ def annotate_precursor_call(
         for arg in precursor_call.arguments
     ]
 
+    feature_name = context_method_name
     if symtab.is_field(feature_name):
         if arguments:
             raise CompilerError(
-                f"Precursor for feature '{feature_name}' is not a method, arguments cannot be given",
+                f"Precursor for feature '{unmangled_feature_name}' is not a method, arguments cannot be given",
                 location=precursor_call.location)
 
         return TField(value_type, feature_name)
 
     assert not symtab.is_constant(
-        feature_name), f"Expected '{feature_name}' to be not Constant"
+        feature_name), f"Expected '{unmangled_feature_name}' to be not Constant"
 
     signature = symtab.get_feature_signature(feature_name)
     if len(arguments) != len(signature):
         feature_node = symtab.get_feature_node(feature_name)
         raise CompilerError(
-            f"Wrong number of arguments given to Precursor of feature '{feature_name}', expected {
+            f"Wrong number of arguments given to Precursor of feature '{unmangled_feature_name}', expected {
                 len(signature)}, got {
                 len(arguments)}. See definition at {
                 feature_node.location}",
@@ -391,10 +420,13 @@ def annotate_precursor_call(
         if not arg.expr_type.conforms_to(arg_type, hierarchy):
             printable_arg_name = unmangle_name(arg_name, is_local=True)
             raise CompilerError(
-                f"Type mismatch for argument '{printable_arg_name}' in Precursor for feature '{feature_name}': expected {arg_type}, got {
+                f"Type mismatch for argument '{printable_arg_name}' in Precursor for feature '{unmangled_feature_name}': expected {arg_type}, got {
                     arg.expr_type}", location=precursor_call.location)
 
-    return TFeatureCall(value_type, feature_name, arguments, None)
+    print("FUCK?")
+    real_feature = TFeatureCall(value_type, precursor_name, arguments, None)
+    print(real_feature)
+    return real_feature
 
 
 def annotate_create_expr(
@@ -925,12 +957,38 @@ def annotate_routine(routine_call: RoutineCall,
     return TRoutineCall(feature_call)
 
 
+def annotate_precursor_routine(
+        precursor: PrecursorCallStmt,
+        context_method_name: str,
+        symtab: ClassSymbolTable,
+        hierarchy: ClassHierarchy,
+        global_class_table: GlobalClassTable,
+        flatten_class_mapping: dict[str, FlattenClass]):
+    print(f"CONTEXT METHOD NAME: {context_method_name}")
+    feature_call = annotate_precursor_call(
+        precursor.precursor_call,
+        context_method_name,
+        symtab,
+        hierarchy,
+        global_class_table,
+        flatten_class_mapping)
+    if isinstance(feature_call, TField) or isinstance(feature_call, TVariable):
+        unmangled_name = unmangle_name(
+            feature_call.name,
+            is_local=isinstance(feature_call, TVariable))
+        raise CompilerError(
+            f"Attempted to invoke subroutine '{unmangled_name}' on a variable or field")
+    return TRoutineCall(feature_call)
+
+
 def annotate_statement(stmt: Statement,
                        context_method_name: str,
                        symtab: ClassSymbolTable,
                        hierarchy: ClassHierarchy,
                        global_class_table: GlobalClassTable,
                        flatten_class_mapping: dict[str, FlattenClass]):
+    print("*"*40)
+    print(stmt)
     match stmt:
         case Assignment() as assignment:
             return annotate_assignment(
@@ -972,9 +1030,17 @@ def annotate_statement(stmt: Statement,
                 hierarchy,
                 global_class_table,
                 flatten_class_mapping)
+        case PrecursorCallStmt() as precursor_call_stmt:
+            return annotate_precursor_routine(
+                precursor_call_stmt,
+                context_method_name,
+                symtab,
+                hierarchy,
+                global_class_table,
+                flatten_class_mapping)
         case _:
             raise CompilerError(
-                "Unsupported statement type",
+                f"Unsupported statement type: {stmt}",
                 location=stmt.location)
 
 
