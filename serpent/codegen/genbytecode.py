@@ -155,7 +155,7 @@ def generate_bytecode_for_create_expr(
     create_fq_class_name = add_package_prefix(tcreate_expr.expr_type.full_name)
     class_index = pool.find_class(create_fq_class_name)
     
-    bytecode = [New(class_index), Dup()]
+    bytecode = [New(class_index), Dup(), Dup()]
 
     init_index = pool.add_methodref(
         method_name="<init>",
@@ -222,9 +222,19 @@ def generate_bytecode_for_feature_call(
         this = [Aload(0)]
         bytecode.extend(this)
     else:
+        mangled_name = tfeature_call.feature_name
+        print(f"MANGLED NAME: {mangled_name}")
+        print(tfeature_call.owner)
+        precursor_prefix = "Precursor_"
+        if mangled_name.startswith(precursor_prefix):
+            mangled_name = mangled_name[len(precursor_prefix) + 1:]
+        class_index = mangled_name.index("_") + 1
+        class_name = mangled_name[:class_index-1]
+        owner_fq_class_name = add_package_prefix(class_name)
+        print(f"NAAAAAMEEE: {owner_fq_class_name}")
         this = generate_bytecode_for_expr(
                 tfeature_call.owner,
-                fq_class_name,
+                owner_fq_class_name,
                 pool,
                 local_table)
         bytecode.extend(this)
@@ -290,6 +300,8 @@ def generate_bytecode_for_field(
         tfield: TField,
         fq_class_name: str,
         pool: ConstPool) -> list[ByteCommand]:
+    if tfield.owner is not None:
+        fq_class_name = add_package_prefix(tfield.owner.expr_type.full_name)
     field_index = pool.find_fieldref(tfield.name, fq_class_name)
     return [GetField(field_index)]
 
@@ -505,6 +517,8 @@ def generate_bytecode_for_expr(
             return generate_bytecode_for_character_const(texpr, pool)
         case TStringConst():
             return generate_bytecode_for_string_const(texpr, pool)
+        case TVoidConst():
+            return generate_bytecode_for_void_const()
         case TStringConst():
             return generate_bytecode_for_void_const(texpr)
         case TCreateExpr():
@@ -563,6 +577,7 @@ def generate_bytecode_for_assignment(
     match lvalue:
         case TField(name=field_name):
             field_index = pool.find_fieldref(field_name, fq_class_name)
+            bytecode.insert(0, Aload(0))
             bytecode.append(PutField(field_index))
         case TVariable(name=variable_name):
             if variable_name == "local_c":

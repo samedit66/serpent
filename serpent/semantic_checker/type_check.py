@@ -123,6 +123,7 @@ class TRoutineCall(TStatement):
 @dataclass(frozen=True)
 class TField(TExpr):
     name: str
+    owner: TExpr | None = None
 
 
 @dataclass(frozen=True)
@@ -258,7 +259,7 @@ not allowed to call feature '{name}' of class '{callee_symtab.type_of.name}'"
                 location=feature_call.location)
 
         if callee_symtab.is_field(feature_name):
-            return TField(value_type, feature_name)
+            return TField(value_type, feature_name, typed_owner)
         else:
             constant_node = callee_symtab.get_feature_node(feature_name)
             assert isinstance(constant_node, Constant)
@@ -915,6 +916,12 @@ def annotate_routine(routine_call: RoutineCall,
         hierarchy,
         global_class_table,
         flatten_class_mapping)
+    if isinstance(feature_call, TField) or isinstance(feature_call, TVariable):
+        unmangled_name = unmangle_name(
+            feature_call.name,
+            is_local=isinstance(feature_call, TVariable))
+        raise CompilerError(
+            f"Attempted to invoke subroutine '{unmangled_name}' on a variable or field.")
     return TRoutineCall(feature_call)
 
 
