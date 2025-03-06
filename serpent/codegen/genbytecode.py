@@ -294,7 +294,7 @@ def generate_bytecode_for_field(
     bytecode = []
     if tfield.owner is not None:
         fq_class_name = add_package_prefix(tfield.owner.expr_type.full_name)
-        bytecode.append(
+        bytecode.extend(
             generate_bytecode_for_expr(
                 tfield.owner,
                 fq_class_name,
@@ -309,9 +309,6 @@ def generate_bytecode_for_field(
 def generate_bytecode_for_variable(
         tvariable: TVariable,
         local_table: LocalTable) -> list[ByteCommand]:
-    print("-"*40)
-    print(local_table.variables)
-    print("*"*40)
     variable_index = local_table[tvariable.name]
     return [Aload(variable_index)]
 
@@ -581,8 +578,6 @@ def generate_bytecode_for_assignment(
             bytecode.insert(0, Aload(0))
             bytecode.append(PutField(field_index))
         case TVariable(name=variable_name):
-            if variable_name == "local_c":
-                print(local_table.variables)
             variable_index = local_table[variable_name]
             bytecode.append(Astore(variable_index))
 

@@ -94,6 +94,4 @@ def make_general_class(classes: list[TClass]) -> TClass:
     # Добавляем конструктор по умолчанию, он не будет конфликтовать
     # с уже найденными конструкторами, т.к. имеет уникальное имя <init>
     unique_methods.append(make_general_constructor(unique_fields))
-    print(unique_fields)
     return TClass(class_name=ROOT_CLASS_NAME, methods=unique_methods, fields=unique_fields)
-

@@ -93,16 +93,6 @@ class ClassFile:
         #   u2 attributes_count (0)
         def encode_code_attribute(code: CodeAttribute) -> bytes:
             # Вычисляем длину байткода как сумму размеров всех команд
-            code_length = 0
-            for cmd in code.bytecode:
-                try:
-                    code_length += cmd.size()
-                except Exception as err:
-                    print(err)
-                    print(cmd)
-                    import sys
-                    sys.exit(1)
-
             code_length = sum(cmd.size() for cmd in code.bytecode)
             # Длина атрибута: 2 (max_stack) + 2 (max_locals) + 4 (code_length) +
             # code_length + 2 (exception_table_length) + 2 (attributes_count) = 12 + code_length
