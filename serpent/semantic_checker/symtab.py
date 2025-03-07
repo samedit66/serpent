@@ -105,12 +105,6 @@ def type_of_class_decl_type(type_decl: ClassType) -> Type:
                 "Generic type declarations must be concrete types, not generics",
                 generic_decl.location)
 
-        type_of = type_of_class_decl_type(generic_decl)
-        if type_of.name == "NONE":
-            raise CompilerError(
-                f"It is not allowed to annotate objects with type of 'NONE' class",
-                generic_decl.location)
-
         generics.append(type_of_class_decl_type(generic_decl))
 
     typ = Type(name=type_decl.name, generics=generics)
