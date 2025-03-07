@@ -341,16 +341,10 @@ def annotate_precursor_call(
         f"Precursor_{parent_name}_{unmangled_feature_name}"
         for parent_name in parents_names]
 
-    print(f"SYMTAB TYPE: {symtab.full_type_name}, CLASS NAME: {class_name}")
-    print(f"PRECURSOR: {context_method_name}")
-    print(f"POSSIBLE PRECURSORS: {possible_precursors}")
-    #print([f for f in symtab.feature_node_map.keys()])
-    # Получаем реально определенные прекурсоры
     precursors = [
         precursor_name
         for precursor_name in possible_precursors
         if symtab.has_feature(precursor_name, self_called=True)]
-    print(precursors)
 
     if len(precursors) == 0:
         raise CompilerError(
@@ -423,9 +417,7 @@ def annotate_precursor_call(
                 f"Type mismatch for argument '{printable_arg_name}' in Precursor for feature '{unmangled_feature_name}': expected {arg_type}, got {
                     arg.expr_type}", location=precursor_call.location)
 
-    print("FUCK?")
     real_feature = TFeatureCall(value_type, precursor_name, arguments, None)
-    print(real_feature)
     return real_feature
 
 
@@ -964,7 +956,6 @@ def annotate_precursor_routine(
         hierarchy: ClassHierarchy,
         global_class_table: GlobalClassTable,
         flatten_class_mapping: dict[str, FlattenClass]):
-    print(f"CONTEXT METHOD NAME: {context_method_name}")
     feature_call = annotate_precursor_call(
         precursor.precursor_call,
         context_method_name,
@@ -987,8 +978,6 @@ def annotate_statement(stmt: Statement,
                        hierarchy: ClassHierarchy,
                        global_class_table: GlobalClassTable,
                        flatten_class_mapping: dict[str, FlattenClass]):
-    print("*"*40)
-    print(stmt)
     match stmt:
         case Assignment() as assignment:
             return annotate_assignment(

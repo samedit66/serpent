@@ -665,7 +665,6 @@ def generate_bytecode_for_loop(
         generate_bytecode_for_stmts(
             tloop.body, fq_class_name, pool, local_table))
     
-    print(tloop.until_cond)
     bytecode.extend(
         generate_bytecode_for_expr(
             tloop.until_cond, fq_class_name, pool, local_table))

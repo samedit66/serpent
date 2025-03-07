@@ -288,8 +288,6 @@ class MethodsTable:
         local_table = LocalTable(variables)
 
         bytecode = generate_bytecode_for_method(tmethod, fq_class_name, constant_pool, local_table)
-        if tmethod.method_name == "APPLICATION_do_shit":
-            print(local_table.variables)
         code = CodeAttribute(code_name_index, local_table, bytecode)
         method_info = MethodInfo(access_flags, name_index, descriptor_index, code)
         self.methods.append(method_info)

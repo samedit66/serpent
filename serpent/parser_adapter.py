@@ -1,12 +1,22 @@
 import subprocess
 import re
+from pathlib import Path
 
 
-def replace_rn_with_n(s):
-    return "\n".join(s.splitlines())
+def parse_files(files, parser_path):
+    files_arg = [str(f) for f in files]
+    try:
+        output = subprocess.run(
+            [parser_path, *files_arg],
+            capture_output=True)
+    except FileNotFoundError:
+        raise RuntimeError(
+            f'Couldn\'t find eiffel parser by path "{parser_path}"')
+    stdout, stderr = output.stdout.decode(), output.stderr.decode()
+    return replace_rn_with_n(stdout), replace_rn_with_n(stderr)
 
 
-def parse(source, parser_path):
+def parse_string(source, parser_path):
     """Возвращает результат работы парсера Eiffel по заданному файлу
 
     :param program: Текст программы на Eiffel
@@ -25,6 +35,10 @@ def parse(source, parser_path):
             f'Couldn\'t find eiffel parser by path "{parser_path}"')
     stdout, stderr = output.stdout.decode(), output.stderr.decode()
     return replace_rn_with_n(stdout), replace_rn_with_n(stderr)
+
+
+def replace_rn_with_n(s):
+    return "\n".join(s.splitlines())
 
 
 def make_error_message(stderr):
