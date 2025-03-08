@@ -44,19 +44,16 @@ def main() -> None:
 
     # `build` command
     build_parser = subparsers.add_parser("build", help="Compile an Eiffel project.")
-    build_parser.add_argument("source", help="Source folder")
+    build_parser.add_argument("source", nargs="?", default=".", help="Source folder (default: current directory).")
     build_parser.add_argument("-m", "--mainclass", default="APPLICATION", help="Main class (default: APPLICATION).")
     build_parser.add_argument("-r", "--mainroutine", default="make", help="Main method (default: make).")
     build_parser.add_argument("-j", "--javaversion", type=int, default=8, help="Java version (default: 8).")
-    build_parser.add_argument("-d", "--outputdir", default="classes", help="Build folder (default: output).")
+    build_parser.add_argument("-d", "--outputdir", default="classes", help="Build folder (default: class).")
 
     # `run` command
     run_parser = subparsers.add_parser("run", help="Run compiled class files.")
     run_parser.add_argument("classpath", nargs="?", default="classes", help="Folder with class files (default: classes).")
     run_parser.add_argument("-m", "--mainclass", default="APPLICATION", help="Main class (default: APPLICATION).")
-    run_parser.add_argument("-r", "--mainroutine", default="make", help="Main method (default: make).")
-    run_parser.add_argument("-j", "--javaversion", type=int, default=8, help="Java version (default: 8).")
-    run_parser.add_argument("-d", "--outputdir", default="output", help="Build folder (default: output).")
 
     # `jar` command
     jar_parser = subparsers.add_parser("jar", help="Create a JAR file.")
@@ -89,22 +86,11 @@ def main() -> None:
         )
 
     elif args.command == "run":
-        classpath = Path(args.classpath)
-        if not classpath.exists():
-            build_class_files(
-                eiffel_source_dirs=[stdlib, args.classpath],
-                java_source_dirs=[rtldir],
-                parser_path=parser_path,
-                error_collector=error_collector,
-                build_dir=args.outputdir,
-                java_version=args.javaversion,
-                main_class_name=args.mainclass,
-                main_routine_name=args.mainroutine,
-                eiffel_package="com.eiffel",
-            )
-
-        if error_collector.ok():
-            run(args.classpath, error_collector, args.mainclass)
+        run(
+            args.classpath,
+            error_collector,
+            args.mainclass,
+        )
 
     elif args.command == "jar":
         make_jar(
