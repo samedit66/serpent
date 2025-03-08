@@ -47,18 +47,22 @@ def main() -> None:
     build_parser.add_argument("-m", "--mainclass", default="APPLICATION", help="Main class (default: APPLICATION).")
     build_parser.add_argument("-r", "--mainroutine", default="make", help="Main method (default: make).")
     build_parser.add_argument("-j", "--javaversion", type=int, default=8, help="Java version (default: 8).")
-    build_parser.add_argument("-b", "--build", default="output", help="Build folder (default: output).")
+    build_parser.add_argument("-d", "--outputdir", default="classes", help="Build folder (default: output).")
 
     # `run` command
     run_parser = subparsers.add_parser("run", help="Run compiled class files.")
-    run_parser.add_argument("classpath", nargs="?", default="output", help="Folder with class files (default: output).")
+    run_parser.add_argument("classpath", nargs="?", default="classes", help="Folder with class files (default: classes).")
     run_parser.add_argument("-m", "--mainclass", default="APPLICATION", help="Main class (default: APPLICATION).")
+    run_parser.add_argument("-r", "--mainroutine", default="make", help="Main method (default: make).")
+    run_parser.add_argument("-j", "--javaversion", type=int, default=8, help="Java version (default: 8).")
+    run_parser.add_argument("-d", "--outputdir", default="output", help="Build folder (default: output).")
 
     # `jar` command
     jar_parser = subparsers.add_parser("jar", help="Create a JAR file.")
-    jar_parser.add_argument("classpath", nargs="?", default="output", help="Folder with class files (default: output).")
+    jar_parser.add_argument("classpath", nargs="?", default="classes", help="Folder with class files (default: classes).")
     jar_parser.add_argument("-m", "--mainclass", default="APPLICATION", help="Main class (default: APPLICATION).")
-    jar_parser.add_argument("-o", "--output", default=".", help="Output folder for the JAR file (default: current directory).")
+    jar_parser.add_argument("-d", "--outputdir", default=".", help="Output folder for the JAR file (default: current directory).")
+    jar_parser.add_argument("-n", "--jarname", default="app.jar", help="Jar name (default: app.jar).")
 
     args = parser.parse_args()
 
@@ -76,7 +80,7 @@ def main() -> None:
             java_source_dirs=[rtldir],
             parser_path=parser_path,
             error_collector=error_collector,
-            build_dir=args.build,
+            build_dir=args.outputdir,
             java_version=args.javaversion,
             main_class_name=args.mainclass,
             main_routine_name=args.mainroutine,
@@ -87,14 +91,14 @@ def main() -> None:
         classpath = Path(args.classpath)
         if not classpath.exists():
             build_class_files(
-                eiffel_source_dirs=[stdlib, "."],
+                eiffel_source_dirs=[stdlib, args.classpath],
                 java_source_dirs=[rtldir],
                 parser_path=parser_path,
                 error_collector=error_collector,
-                build_dir=args.classpath,
-                java_version=8,
+                build_dir=args.outputdir,
+                java_version=args.javaversion,
                 main_class_name=args.mainclass,
-                main_routine_name="make",
+                main_routine_name=args.mainroutine,
                 eiffel_package="com.eiffel",
             )
 
@@ -102,7 +106,14 @@ def main() -> None:
             run(args.classpath, error_collector, args.mainclass)
 
     elif args.command == "jar":
-        make_jar(args.classpath, args.mainclass, args.output)
+        make_jar(
+            build_dir=args.classpath,
+            error_collector=error_collector,
+            main_class_name=args.mainclass,
+            eiffel_package="com.eiffel",
+            jar_name=args.jarname,
+            output_dir=args.outputdir
+        )
 
     if not error_collector.ok():
         error_collector.show()

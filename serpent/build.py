@@ -66,7 +66,7 @@ def make_jar(build_dir: str,
     :param error_collector: Объект для сбора ошибок, если требуется.
     """
     build_dir = Path(build_dir)
-    jar_path = output_dir / jar_name
+    jar_path = Path(output_dir) / jar_name
     manifest_dir = build_dir / "META-INF"
     manifest_path = manifest_dir / "MANIFEST.MF"
 
