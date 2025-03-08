@@ -5,8 +5,8 @@ from serpent.build import build_class_files, run, make_jar
 from serpent.resources import get_resource_path
 
 
-def init_project(error_collector: ErrorCollector) -> None:
-    app_dir = Path("app")
+def init_project(name: str, error_collector: ErrorCollector) -> None:
+    app_dir = Path(name)
     app_file = app_dir / "app.e"
 
     if app_dir.exists():
@@ -39,7 +39,8 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # `init` command
-    subparsers.add_parser("init", help="Create a minimal Eiffel project.")
+    init_parser = subparsers.add_parser("init", help="Create a minimal Eiffel project.")
+    init_parser.add_argument("name", nargs="?", default="app", help="Project name (default: app)")
 
     # `build` command
     build_parser = subparsers.add_parser("build", help="Compile an Eiffel project.")
@@ -72,7 +73,7 @@ def main() -> None:
     parser_path = get_resource_path("build") / "eiffelp"
 
     if args.command == "init":
-        init_project(error_collector)
+        init_project(args.name, error_collector)
 
     elif args.command == "build":
         build_class_files(
