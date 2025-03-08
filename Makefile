@@ -1,17 +1,17 @@
 PARSER_SOURCES=serpent/parser
 EXECUTABLE=eiffelp
-BUILD_DIR=build
+BUILD_DIR=serpent/resources/build
 
 .PHONY: build
 build: clean
-	$(MAKE) -C $(PARSER_SOURCES) ./$(BUILD_DIR)
-	mkdir ./$(BUILD_DIR)
+	$(MAKE) -C $(PARSER_SOURCES) build
+	mkdir -p ./$(BUILD_DIR)
 	mv ./$(PARSER_SOURCES)/$(EXECUTABLE) ./$(BUILD_DIR)
 
 .PHONY: debug
 debug: clean
 	$(MAKE) -C $(PARSER_SOURCES) debug
-	mkdir ./$(BUILD_DIR)
+	mkdir -p ./$(BUILD_DIR)
 	mv ./$(PARSER_SOURCES)/$(EXECUTABLE) ./$(BUILD_DIR)
 
 .PHONY: clean
