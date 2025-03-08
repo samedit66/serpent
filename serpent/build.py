@@ -19,14 +19,102 @@ from serpent.codegen.preprocess import make_general_class
 from serpent.codegen.class_file import make_class_file
 
 
-def build(eiffel_source_dirs: list[str],
-          java_source_dirs: list[str],
-          parser_path: str,
-          build_dir: str = "build",
-          java_version: int = 8,
-          main_class_name: str = "APPLICATION",
-          main_routine_name: str = "make",
-          eiffel_package: str = "com.eiffel") -> None:
+def run(classpath: str,
+        error_collector: ErrorCollector,
+        main_class_name: str = "APPLICATION",
+        eiffel_package: str = "com.eiffel") -> None:
+    fq_main_class = f"{eiffel_package}.{main_class_name}"
+    # В модуле codegen отсутствует генерация stack map frames,
+    # поэтому запускаем JVM с флагом компиляции -noverify
+    javac_cmd = [
+        "java",
+        "-noverify",
+        "-classpath", classpath,
+        fq_main_class
+    ]
+
+    try:
+        result = subprocess.run(
+            javac_cmd,
+            stdout=sys.stdout,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        if result.returncode != 0:
+            error_collector.add_error(
+                CompilerError(f"Java compilation error: {result.stderr}", source="serpent")
+            )
+    except Exception as e:
+        error_collector.add_error(
+            CompilerError(f"Java compilation failed: {e}", source="serpent")
+        )
+
+
+def make_jar(build_dir: str,
+             error_collector: ErrorCollector,
+             main_class_name: str = "APPLICATION",
+             eiffel_package: str = "com.eiffel",
+             jar_name: str = "app.jar",
+             output_dir: Path = Path(".")) -> None:
+    """
+    Создает jar-файл из всех файлов, содержащихся в каталоге build_dir.
+    Jar-файл включает всю структуру директорий, начиная с build_dir.
+    
+    :param build_dir: Каталог сборки, содержащий скомпилированные файлы.
+    :param jar_name: Имя jar-файла (по умолчанию "app.jar").
+    :param output_dir: Каталог, куда будет помещен jar-файл (по умолчанию текущая папка).
+    :param error_collector: Объект для сбора ошибок, если требуется.
+    """
+    build_dir = Path(build_dir)
+    jar_path = output_dir / jar_name
+    manifest_dir = build_dir / "META-INF"
+    manifest_path = manifest_dir / "MANIFEST.MF"
+
+    # Создаем папку META-INF для манифеста
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+    # Записываем файл манифеста
+    with open(manifest_path, "w") as manifest_file:
+        manifest_file.write("Manifest-Version: 1.0\n")
+        fq_main_class_name = f"{eiffel_package}.{main_class_name}"
+        manifest_file.write(f"Main-Class: {fq_main_class_name}\n")
+        manifest_file.write("\n")  # Пустая строка в конце файла обязательна
+
+    # Команда для создания JAR-файла
+    jar_cmd = [
+        "jar",
+        "cfm",  # 'c' - создать JAR, 'f' - указать имя, 'm' - добавить манифест
+        str(jar_path),
+        str(manifest_path),
+        "-C",
+        str(build_dir),
+        "."
+    ]
+
+    try:
+        result = subprocess.run(
+            jar_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        if result.returncode != 0:
+            error_collector.add_error(
+                CompilerError(f"Jar creation error: {result.stderr}", source="serpent"))
+    except OSError as e:
+        error_collector.add_error(
+            CompilerError(f"Jar creation failed: {e}", source="serpent"))
+
+
+def build_class_files(
+        eiffel_source_dirs: list[str],
+        java_source_dirs: list[str],
+        parser_path: str,
+        error_collector: ErrorCollector,
+        build_dir: str = "build",
+        java_version: int = 8,
+        main_class_name: str = "APPLICATION",
+        main_routine_name: str = "make",
+        eiffel_package: str = "com.eiffel") -> None:
     """
     Автоматизирует процесс сборки проекта:
       - Парсит и компилирует исходные файлы Eiffel, генерируя .class файлы,
@@ -45,13 +133,10 @@ def build(eiffel_source_dirs: list[str],
     build_dir = Path(build_dir)
     make_build_dir(build_dir)
 
-    error_collector = ErrorCollector()
-
     # 1. Парсинг исходников Eiffel.
     json_ast = parse(eiffel_source_dirs, parser_path, error_collector)
     if not error_collector.ok():
-        error_collector.show()
-        sys.exit(1)
+        return
 
     # Создаем AST из полученного словаря.
     ast = make_ast(json_ast)
@@ -59,19 +144,16 @@ def build(eiffel_source_dirs: list[str],
     # 2. Семантическая проверка и анализ.
     examine_system(ast, error_collector)
     if not error_collector.ok():
-        error_collector.show()
-        sys.exit(1)
+        return
 
     flatten_classes = analyze_inheritance(ast, error_collector)
     if not error_collector.ok():
-        error_collector.show()
-        sys.exit(1)
+        return
 
     hierarchy = ClassHierarchy(ast)
     classes = check_types(flatten_classes, hierarchy, error_collector)
     if not error_collector.ok():
-        error_collector.show()
-        sys.exit(1)
+        return
 
     # 3. Генерация .class файлов для Eiffel.
     # Определяем главный класс и входной метод.
@@ -85,14 +167,12 @@ def build(eiffel_source_dirs: list[str],
         main_class_name=main_class_name,
         main_routine_name=main_routine_name)
     if not error_collector.ok():
-        error_collector.show()
-        sys.exit(1)
+        return
 
     # 4. Компиляция Java исходников.
     compile_java_files(java_source_dirs, error_collector, build_dir, java_version)
     if not error_collector.ok():
-        error_collector.show()
-        sys.exit(1)
+        return
 
 
 def compile_eiffel_classes(

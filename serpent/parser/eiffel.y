@@ -761,6 +761,13 @@ parse_files(int files_count, char **file_names) {
         }
 
         current_file_path = file_names[i];
+
+        // Сброс текущих номеров строки и колонки для нового файла
+        yylloc.first_line = 1;
+        yylloc.first_column = 1;
+        yylloc.last_line = 1;
+        yylloc.last_column = 1;
+
         yyrestart(eiffel_file);
         yyparse();
     }
