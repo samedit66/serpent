@@ -703,7 +703,8 @@ expr: constant %prec LOWER_THAN_BRACKETS { $$ = $1; }
 
 void yyerror(const char *str) {
     errors_count++;
-    fprintf(stderr, "Parser error, line %d: %s\n", yylloc.first_line, str);
+    char *from_file = current_file_path == NULL ? "<stdin>" : current_file_path;
+    fprintf(stderr, "file: %s, line %d: %s\n", from_file, yylloc.first_line, str);
 }
 
 /**
