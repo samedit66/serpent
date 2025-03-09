@@ -65,11 +65,13 @@ def generate_bytecode_for_real_const(
         desc="(F)V",
         fq_class_name=fq_class_name)
 
-    float_index = pool.add_float(const.value)
+    index = pool.add_float(const.value)
+    ldc = Ldc(index) if index < 256 else Ldc_w(index)
+
     bytecode = [
         New(class_index),
         Dup(),
-        Ldc(float_index),
+        ldc,
         InvokeSpecial(methodref_idx)
     ]
 
@@ -112,11 +114,12 @@ def generate_bytecode_for_string_const(
         desc="(Ljava/lang/String;)V",
         fq_class_name=fq_class_name)
     
-    string_index = pool.add_string(const.value)
+    index = pool.add_string(const.value)
+    ldc = Ldc(index) if index < 256 else Ldc_w(index)
     bytecode = [
         New(class_index),
         Dup(),
-        Ldc(string_index),
+        ldc,
         InvokeSpecial(methodref_idx)
     ]
 
@@ -133,11 +136,12 @@ def generate_bytecode_for_character_const(
         desc="(Ljava/lang/String;)V",
         fq_class_name=fq_class_name)
 
-    string_index = pool.find_string(const.value)
+    index = pool.find_string(const.value)
+    ldc = Ldc(index) if index < 256 else Ldc_w(index)
     bytecode = [
         New(class_index),
         Dup(),
-        Ldc(string_index),
+        ldc,
         InvokeSpecial(methodref_idx)
     ]
 
