@@ -58,7 +58,7 @@ class Type:
     def full_name(self) -> str:
         if self.generics:
             generics_str = "_".join(map(str, self.generics))
-            return f"{self.name}__{generics_str}]"
+            return f"{self.name}__{generics_str}"
         return self.name
 
     def conforms_to(self, other: Type, hierarchy: ClassHierarchy) -> bool:
@@ -311,8 +311,9 @@ def features_of_flatten_class(
     return explicit, implicit
 
 
-def constructors_of(flatten_cls: FlattenClass) -> list[str]:
-    return [f"{f.from_class}_{f.name}" for f in flatten_cls.constructors]
+def constructors_of(flatten_cls: FlattenClass, actual_type: ClassType) -> list[str]:
+    typ = type_of_class_decl_type(actual_type)
+    return [f"{typ.full_name}_{f.name}" for f in flatten_cls.constructors]
 
 
 def check_clients_existence(
@@ -404,7 +405,7 @@ def make_class_symtab(
     # implicit - фичи, которые неявно должны быть у класса,
     # для того чтобы он корректно работал (precursors, renamed, ...)
     explicit, implicit = features_of_flatten_class(flatten_cls, actuals)
-    constructors = constructors_of(flatten_cls)
+    constructors = constructors_of(flatten_cls, actuals)
     class_interface = [feature.name for feature in explicit]
     feature_clients_map = {}
     feature_value_type_map = {}

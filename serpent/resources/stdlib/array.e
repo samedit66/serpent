@@ -2,20 +2,28 @@ class
     ARRAY [G]
 -- Динамический массив. Обертка над ArrayList в Java.
 
+create
+    make_filled_with
+
 feature
+-- Конструкторы массива.
 
     make_filled_with (a_lower, a_upper: INTEGER; value: G)
-    local
-        i: INTEGER
+    -- Создает массив с заданным промежутком индексов [a_lower..a_upper]
+    -- и заполняет его значением value.
     do
-        make_raw (a_low, a_high)
-
         lower := a_lower
         upper := a_upper
+        raw_array := make_filled_with_raw (count, value)
+    end
 
-        from i := lower until i = upper loop
-            put (value, i)
-        end
+feature {NONE}
+-- Непосредственное создание массива.
+
+    make_filled_with_raw(cap: INTEGER; value: ANY): NONE
+    -- Непосредственно создает массив.
+        external "Java"
+        alias "com.eiffel.PLATFORM.ARRAY_make_filled_with_raw"
     end
 
 feature
@@ -47,24 +55,40 @@ feature
 
     count: INTEGER
     -- Возвращает количество элементов в массиве.
-        external "Java"
-        alias "com.eiffel.PLATFORM.ARRAY_count"
+    then
+        upper - lower + 1
+    end
+
+feature
+-- Проверки.
+
+    valid_index (index: INTEGER): BOOLEAN
+    -- Проверяет, допустимый ли это индекс для массива
+    then
+        lower <= index and then index <= upper
     end
 
 feature {NONE}
+-- Все что связано с индексом в массиве.
 
     map_index (index: INTEGER): INTEGER
+    -- Преобразует индекс массива из промежутка [lower..upper]
+    -- в "настоящий" индекс из промежутка [0..upper-lower]
     then
         index - lower
     end
+
+feature {NONE}
+-- Доступ к "сырому" массиву.
+    raw_array: NONE
 
     item_raw (index: INTEGER): NONE
         external "Java"
         alias "com.eiffel.PLATFORM.ARRAY_item_raw"
     end
 
-    put_raw (element: G; index: INTEGER)
+    put_raw (element: ANY; index: INTEGER)
         external "Java"
-        alias "com.eiffel.PLATFORM.ARRAY_item_raw"
+        alias "com.eiffel.PLATFORM.ARRAY_put_raw"
     end
 end

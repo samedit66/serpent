@@ -9,6 +9,7 @@ from serpent.codegen.constpool import (
     COMPILER_NAME)
 from serpent.codegen.bytecommand import *
 from serpent.codegen.preprocess import default_value_for
+from serpent.errors import CompilerWarning, CompilerError
 
 
 @dataclass(frozen=True)
@@ -277,10 +278,9 @@ def generate_bytecode_for_feature_call(
                 case "BOOLEAN":
                     bytecode.extend(pack_builtin_type("BOOLEAN", pool))
                 case other_type:
-                    raise CompilerError(
-                        f"Return type '{other_type}' of external method '{ext_method_name}' ({alias}) is not supported. "
-                        "Please use one of the following types: STRING, CHARACTER, INTEGER, REAL, BOOLEAN.",
-                        source=COMPILER_NAME)
+                    print(
+                        f"Return type '{other_type}' of external method '{ext_method_name}' ({alias}) is not guaranteed to work correctly "
+                        "with external methods. When possible, please use one of the following types instead: STRING, CHARACTER, INTEGER, REAL, BOOLEAN.")
 
     if tfeature_call.owner is not None:
         fq_class_name = add_package_prefix(tfeature_call.owner.expr_type.full_name)
@@ -802,10 +802,9 @@ def generate_bytecode_for_method(
             ext_fq_class_name = make_fully_qualifed_name(parts[:-1])
             if return_type.full_name not in [
                     "STRING", "CHARACTER", "INTEGER", "REAL", "BOOLEAN", "<VOID>"]:
-                raise CompilerError(
-                        f"Return type '{return_type.full_name}' of external method '{ext_method_name}' ({alias}) is not supported. "
-                        "Please use one of the following types: STRING, CHARACTER, INTEGER, REAL, BOOLEAN.",
-                        source=COMPILER_NAME)
+                print(
+                        f"Return type '{return_type.full_name}' of external method '{ext_method_name}' ({alias}) is not guaranteed to work correctly "
+                        "with external methods. When possible, please use one of the following types instead: STRING, CHARACTER, INTEGER, REAL, BOOLEAN.")
     
     is_function = return_type.full_name != "<VOID>"
     if is_function:

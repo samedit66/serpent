@@ -81,7 +81,10 @@ class ErrorCollector:
             self.errors.append(error)
 
     def ok(self) -> bool:
-        return len(self.errors) == 0
+        return len(
+            [err
+             for err in self.errors
+             if isinstance(err, CompilerError)]) == 0
 
     def show(self) -> None:
         if self.ok():

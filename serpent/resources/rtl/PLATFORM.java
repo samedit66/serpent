@@ -78,24 +78,8 @@ public class PLATFORM {
         }
     }
 
-    /**
-     * Конструктор для создания массива значений PLATFORM.
-     * Устанавливает диапазон допустимых индексов и инициализирует список для хранения элементов.
-     *
-     * @param min_index минимальный индекс массива
-     * @param max_index максимальный индекс массива
-     * @throws IllegalArgumentException если min_index больше max_index
-     */
-    public PLATFORM(int min_index, int max_index) {
-        if (min_index > max_index) {
-            throw new IllegalArgumentException("min_index cannot be greater than max_index");
-        }
-
-        value_type = ARRAY_TYPE;
-        array_min_index = min_index;
-        array_max_index = max_index;
-        int cap = array_max_index - array_min_index + 1;
-        raw_array = new ArrayList<>(cap);
+    public PLATFORM(ArrayList<PLATFORM> array) {
+        raw_array = array;
     }
 
     public static void ANY_print(PLATFORM self) throws UnsupportedEncodingException {
@@ -214,20 +198,24 @@ public class PLATFORM {
 
     /* ******************************************************** */
     /* Методы для класса ARRAY */
-    public static PLATFORM ARRAY_make_filled_with(int lower, int upper, PLATFORM value) {
-        if (lower > upper) {
-            throw new IllegalArgumentException("'lower' index cannot be greater than 'upper'");
+    public static PLATFORM ARRAY_make_filled_with_raw(PLATFORM self, int count, PLATFORM value) {
+        if (count < 0) {
+            throw new IllegalArgumentException("'count' cannot be negative");
         }
 
-        int value_type = ARRAY_TYPE;
-        int cap = upper - lower + 1;
-        var raw_array = new ArrayList<>(cap);
-        for (int i = 0; i < raw_array.size(); i++) {
-            raw_array.set(i, value);
+        ArrayList<PLATFORM> array = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            array.add(i, value);
         }
+
+        return new PLATFORM(array);
     }
 
-    public static PLATFORM ARRAY_item_raw(int index) {
-        return 
+    public static PLATFORM ARRAY_item_raw(PLATFORM self, int index) {
+        return self.raw_array.get(index);
+    }
+
+    public static void ARRAY_put_raw(PLATFORM self, PLATFORM element, int index) {
+        self.raw_array.set(index, element);
     }
 }
