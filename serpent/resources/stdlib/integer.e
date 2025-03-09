@@ -3,8 +3,26 @@ class
 -- Целые числа. Обертка для типа int в Java.
 
 inherit
+    ANY
+    redefine
+        default_value
+    end
     NUMERIC
+    redefine
+        default_value
+    end
     COMPARABLE
+    redefine
+        default_value
+    end
+
+feature
+-- Характеристики.
+
+    default_value: like Current
+    then
+        0
+    end
 
 feature
 -- Арифметические действия.

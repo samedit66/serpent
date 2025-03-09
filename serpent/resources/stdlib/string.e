@@ -2,9 +2,6 @@ class
     STRING
 -- Класс для представления строк. Обертка над типом String в Java.
 
-inherit
-    COMPARABLE
-
 feature
 -- Операции со строками.
 

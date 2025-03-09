@@ -222,4 +222,10 @@ public class PLATFORM {
     public static int REAL_is_equal(PLATFORM self, float other) {
         return self.raw_float == other ? 1 : 0;
     }
+
+    /* ******************************************************** */
+    /* Методы для класса ARRAY */
+    public static PLATFORM ARRAY_item_raw(int index) {
+        return 
+    }
 }

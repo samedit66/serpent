@@ -23,4 +23,13 @@ feature
         external "Java"
         alias "com.eiffel.PLATFORM.ANY_print"
     end
+
+feature
+-- Характеристики.
+
+    default_value: like Current
+    -- Значение по умолчанию для заданного типа объекта.
+    then
+        Void
+    end
 end
