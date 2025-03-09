@@ -301,11 +301,11 @@ not allowed to call feature '{name}' of class '{callee_symtab.type_of.name}'"
             "is_greater",
             "is_equal",
             "is_not_equal"
-            ] and (typed_owner.expr_type.full_name in ["INTEGER", "REAL"]
+            ] and typed_owner is not None and (typed_owner.expr_type.full_name in ["INTEGER", "REAL"]
                 and len(arguments) == 1 and arguments[0].expr_type.full_name in ["INTEGER", "REAL"]):
         # Где-то тут было бы неплохо добавить проверку, что
         # метод to_real есть у того, у кого он вызывается
-        
+
         if (typed_owner.expr_type.full_name == "REAL"
                 and arguments[0].expr_type.full_name == "INTEGER"):
             to_real_name = mangle_name("to_real", class_name="INTEGER")

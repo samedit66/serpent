@@ -505,8 +505,15 @@ def merge(features: list[FeatureRecord],
             continue
 
         if len(effective) == 0 and len(deferred) > 0:
-            inherited.append(deferred[0])
-            undefined.extend(deferred[1:])
+            # Такая же проблема как и сверху, но -
+            # данное решение чисто костыль и заплатка... Нет никакой гарантиии в том,
+            # что это верный способ реализации
+            non_own_features = [f for f in deferred if f.from_class != class_decl.class_name]
+            if not non_own_features:
+                continue
+
+            inherited.append(non_own_features[0])
+            undefined.extend(non_own_features[1:])
             continue
 
         assert len(effective) > 1
