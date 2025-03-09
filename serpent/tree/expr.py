@@ -174,7 +174,7 @@ class MulOp(BinaryFeature):
 class DivOp(BinaryFeature):
 
     def __init__(self, *, location: Location, left: Expr, right: Expr) -> None:
-        super().__init__(location, "/", "quotinent", left, right)
+        super().__init__(location, "/", "quotient", left, right)
 
 
 class MinusOp(UnaryFeature):

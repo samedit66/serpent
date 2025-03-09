@@ -291,7 +291,7 @@ not allowed to call feature '{name}' of class '{callee_symtab.type_of.name}'"
             "plus",
             "minus",
             "product",
-            "quotinent",
+            "quotient",
             "integer_quotinent",
             "integer_remainder",
             "power",

@@ -195,6 +195,30 @@ public class PLATFORM {
         return self.raw_float + other;
     }
 
+    public static float REAL_minus(PLATFORM self, float other) {
+        return self.raw_float - other;
+    }
+
+    public static float REAL_product(PLATFORM self, float other) {
+        return self.raw_float * other;
+    }
+
+    public static float REAL_quotient(PLATFORM self, float other) {
+        return self.raw_float / other;
+    }
+
+    public static float REAL_identity(PLATFORM self) {
+        return self.raw_float;
+    }
+
+    public static float REAL_opposite(PLATFORM self) {
+        return -self.raw_float;
+    }
+
+    public static int REAL_is_less(PLATFORM self, float other) {
+        return self.raw_float < other ? 1 : 0;
+    }
+
     public static int REAL_is_equal(PLATFORM self, float other) {
         return self.raw_float == other ? 1 : 0;
     }
