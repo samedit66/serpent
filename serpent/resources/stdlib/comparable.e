@@ -5,6 +5,7 @@ deferred class
 -- остальные операторы сравнения имеют реализацию по умолчанию.
 
 feature
+-- Операции сравнения.
 
     is_less (other: like Current): BOOLEAN
         -- Меньше ли этот объект чем other? 

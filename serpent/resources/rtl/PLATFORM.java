@@ -145,6 +145,37 @@ public class PLATFORM {
         return self.raw_int + other;
     }
 
+    /* ******************************************************** */
+    /* Методы для класса INTEGER */
+
+    public static int INTEGER_minus(PLATFORM self, int other) {
+        return self.raw_int - other;
+    }
+
+    public static int INTEGER_product(PLATFORM self, int other) {
+        return self.raw_int * other;
+    }
+
+    public static float INTEGER_quotient(PLATFORM self, int other) {
+        return ((float) self.raw_int) / other;
+    }
+
+    public static int INTEGER_identity(PLATFORM self) {
+        return self.raw_int;
+    }
+
+    public static int INTEGER_opposite(PLATFORM self) {
+        return -self.raw_int;
+    }
+
+    public static int INTEGER_integer_quotient(PLATFORM self, int other) {
+        return self.raw_int / other;
+    }
+
+    public static int INTEGER_integer_remainder(PLATFORM self, int other) {
+        return self.raw_int % other;
+    }
+
     public static int INTEGER_is_less(PLATFORM self, int other) {
         return self.raw_int < other ? 1 : 0;
     }
@@ -156,6 +187,9 @@ public class PLATFORM {
     public static float INTEGER_to_real(PLATFORM self) {
         return (float) self.raw_int;
     }
+
+    /* ******************************************************** */
+    /* Методы для класса REAL */
 
     public static float REAL_plus(PLATFORM self, float other) {
         return self.raw_float + other;

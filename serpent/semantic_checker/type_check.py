@@ -1181,7 +1181,7 @@ def make_codegen_class(flatten_cls: FlattenClass,
                         case "BOOLEAN":
                             default_value = TBoolConst(return_type, False)
                         case _:
-                            default_value = TVoidConst()
+                            default_value = TVoidConst(expr_type=Type("NONE"))
                     body.append(
                         TAssignment(
                             TVariable(return_type, "local_Result"),

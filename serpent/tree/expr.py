@@ -192,7 +192,7 @@ class PlusOp(UnaryFeature):
 class IntDivOp(BinaryFeature):
 
     def __init__(self, *, location: Location, left: Expr, right: Expr) -> None:
-        super().__init__(location, "//", "integer_qiotient", left, right)
+        super().__init__(location, "//", "integer_quotient", left, right)
 
 
 class ModOp(BinaryFeature):
