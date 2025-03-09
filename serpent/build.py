@@ -160,12 +160,21 @@ def build_class_files(
     eiffel_package_dir = build_dir / eiffel_package.replace(".", "/")
     make_build_dir(eiffel_package_dir)
 
+    try:
+        major, minor  = map_java_version(java_version)
+    except CompilerError as err:
+        error_collector.add_error(err)
+    if not error_collector.ok():
+        return
+
     compile_eiffel_classes(
         classes,
         error_collector,
         eiffel_package_dir,
         main_class_name=main_class_name,
-        main_routine_name=main_routine_name)
+        main_routine_name=main_routine_name,
+        minor_version=minor,
+        major_version=major)
     if not error_collector.ok():
         return
 
@@ -175,12 +184,21 @@ def build_class_files(
         return
 
 
+def map_java_version(java_version: int) -> tuple[int, int]:
+    if 5 <= java_version <= 16:
+        return (java_version + 44, 0)
+    raise CompilerError(
+        f"Java version '{java_version}' is not supported")
+
+
 def compile_eiffel_classes(
         classes: list[TClass],
         error_collector: ErrorCollector,
         build_dir: str,
         main_class_name: str,
-        main_routine_name: str) -> None:
+        main_routine_name: str,
+        minor_version: int,
+        major_version: int) -> None:
     main_class = next(
         (cls for cls in classes if cls.class_name == main_class_name), None)
     if main_class is None:
@@ -208,7 +226,12 @@ def compile_eiffel_classes(
         entry_method_name = main_routine if current.class_name == main_class_name else None
 
         try:
-            class_file = make_class_file(current, rest, entry_point_method=entry_method_name)
+            class_file = make_class_file(
+                current,
+                rest,
+                minor_version=minor_version,
+                major_version=major_version,
+                entry_point_method=entry_method_name)
         except CompilerError as err:
             error_collector.add_error(err)
             continue

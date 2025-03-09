@@ -483,8 +483,8 @@ def make_default_constructors_for_general_class(pool: ConstPool) -> list[MethodI
 def make_class_file(
         current_class: TClass,
         rest_classes: list[TClass],
-        minor_version: int = 0,
-        major_version: int = 52,
+        minor_version: int,
+        major_version: int,
         entry_point_method: str | None = None) -> ClassFile:
     constant_pool = make_const_pool(current_class, rest_classes)
 
