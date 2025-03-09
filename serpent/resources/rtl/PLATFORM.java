@@ -98,17 +98,6 @@ public class PLATFORM {
         raw_array = new ArrayList<>(cap);
     }
 
-    public PLATFORM(PLATFORM array) {
-        if (array.value_type != ARRAY_TYPE) {
-            throw new IllegalArgumentException("The provided object is not an array");
-        }
-
-        value_type = ARRAY_TYPE;
-        array_min_index = array.array_min_index;
-        array_max_index = array.array_max_index;
-        raw_array = new ArrayList<>(array.raw_array);
-    }
-
     public static void ANY_print(PLATFORM self) throws UnsupportedEncodingException {
         PrintStream out = new PrintStream(System.out, true, "UTF-8");
 
@@ -225,6 +214,19 @@ public class PLATFORM {
 
     /* ******************************************************** */
     /* Методы для класса ARRAY */
+    public static PLATFORM ARRAY_make_filled_with(int lower, int upper, PLATFORM value) {
+        if (lower > upper) {
+            throw new IllegalArgumentException("'lower' index cannot be greater than 'upper'");
+        }
+
+        int value_type = ARRAY_TYPE;
+        int cap = upper - lower + 1;
+        var raw_array = new ArrayList<>(cap);
+        for (int i = 0; i < raw_array.size(); i++) {
+            raw_array.set(i, value);
+        }
+    }
+
     public static PLATFORM ARRAY_item_raw(int index) {
         return 
     }
