@@ -282,6 +282,52 @@ not allowed to call feature '{name}' of class '{callee_symtab.type_of.name}'"
                 feature_node.location}",
             location=feature_call.location)
 
+    # Особый случай: с точки зрения Eiffel конструкция
+    # 2 + 4.5 неверна, т.к. фича '+' класса INTEGER ожидает справа
+    # выражений типа INTEGER, однако компилятор вставляет неявное
+    # преобразование в REAL всякий раз, когда обнаруживает попытку
+    # сложить INTEGER и REAL, а также при операциях ниже
+    if name in [
+            "plus",
+            "minus",
+            "product",
+            "quotinent",
+            "integer_quotinent",
+            "integer_remainder",
+            "power",
+            "is_less",
+            "is_less_equal",
+            "is_greater_equal",
+            "is_greater",
+            "is_equal",
+            "is_not_equal"
+            ] and (typed_owner.expr_type.full_name in ["INTEGER", "REAL"]
+                and len(arguments) == 1 and arguments[0].expr_type.full_name in ["INTEGER", "REAL"]):
+        # Где-то тут было бы неплохо добавить проверку, что
+        # метод to_real есть у того, у кого он вызывается
+        
+        if (typed_owner.expr_type.full_name == "REAL"
+                and arguments[0].expr_type.full_name == "INTEGER"):
+            to_real_name = mangle_name("to_real", class_name="INTEGER")
+            arguments[0] = TFeatureCall(
+                expr_type=Type("REAL"),
+                feature_name=to_real_name,
+                arguments=[],
+                owner=arguments[0])
+        elif (typed_owner.expr_type.full_name == "INTEGER"
+                and arguments[0].expr_type.full_name == "REAL"):
+            to_real_name = mangle_name("to_real", class_name="INTEGER")
+            typed_owner = TFeatureCall(
+                expr_type=Type("REAL"),
+                feature_name=to_real_name,
+                arguments=[],
+                owner=typed_owner)
+            
+            new_callee_symtab = global_class_table.get_class_table("REAL")
+            feature_name = mangle_name(name, class_name="REAL")
+            signature = new_callee_symtab.get_feature_signature(feature_name)
+            value_type = new_callee_symtab.type_of_feature(feature_name)
+
     for arg, (arg_name, arg_type) in zip(arguments, signature):
         if not arg.expr_type.conforms_to(arg_type, hierarchy):
             printable_arg_name = unmangle_name(arg_name, is_local=True)
@@ -289,8 +335,9 @@ not allowed to call feature '{name}' of class '{callee_symtab.type_of.name}'"
                 f"Type mismatch for argument '{printable_arg_name}' in feature '{printable_feature_name}': expected {arg_type}, got {
                     arg.expr_type}", location=feature_call.location)
 
-    return TFeatureCall(
+    feature_call = TFeatureCall(
         value_type, feature_name, arguments, typed_owner)
+    return feature_call
 
 
 def annotate_precursor_call(
@@ -725,6 +772,15 @@ def annotate_assignment(assignment: Assignment,
         flatten_class_mapping,
         context_method_name=context_method_name
     )
+
+    # Специальный случай, когда мы пытаетмся присвоить INTEGER в REAL,
+    # компилятор автоматически вставляет функцию преобразования типа
+    if right.expr_type.full_name == "INTEGER" and left.expr_type.full_name == "REAL":
+        right = TFeatureCall(
+            expr_type=Type("REAL"),
+            feature_name=mangle_name("to_real", class_name=right.expr_type.full_name),
+            arguments=[],
+            owner=right)
 
     if not right.expr_type.conforms_to(left.expr_type, hierarchy):
         raise CompilerError(

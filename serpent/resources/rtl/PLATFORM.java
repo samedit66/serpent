@@ -119,6 +119,9 @@ public class PLATFORM {
         else if ((valtype & INTEGER_TYPE) != 0) {
             out.println(self.raw_int);
         }
+        else if ((valtype & REAL_TYPE) != 0) {
+            out.println(self.raw_float);
+        }
         else if ((valtype & STRING_TYPE) != 0) {
             out.println(self.raw_string);
         }
@@ -144,5 +147,17 @@ public class PLATFORM {
 
     public static int INTEGER_is_equal(PLATFORM self, int other) {
         return self.raw_int == other ? 1 : 0;
+    }
+
+    public static float INTEGER_to_real(PLATFORM self) {
+        return (float) self.raw_int;
+    }
+
+    public static float REAL_plus(PLATFORM self, float other) {
+        return self.raw_float + other;
+    }
+
+    public static int REAL_is_equal(PLATFORM self, float other) {
+        return self.raw_float == other ? 1 : 0;
     }
 }

@@ -1,19 +1,14 @@
-class INTEGER
+class REAL
 feature
     plus (other: like Current): like Current
         -- Сложение чисел. Псевдоним для '+'
         external "Java"
-        alias "com.eiffel.PLATFORM.INTEGER_plus"
+        alias "com.eiffel.PLATFORM.REAL_plus"
     end
 
     is_equal (other: like Current): BOOLEAN
         -- Вычитание чисел. Псевдоним для '-'
         external "Java"
-        alias "com.eiffel.PLATFORM.INTEGER_is_equal"
-    end
-
-    to_real: REAL
-        external "Java"
-        alias "com.eiffel.PLATFORM.INTEGER_to_real"
+        alias "com.eiffel.PLATFORM.REAL_is_equal"
     end
 end

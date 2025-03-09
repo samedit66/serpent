@@ -266,7 +266,7 @@ class ConstPool:
             lambda c: isinstance(c, CONSTANT_Float)
                 and c.const == value)
 
-        if float_const is not None:
+        if float_const is None:
             float_const = CONSTANT_Float(
                 self.next_index, value)
             self.constants.append(float_const)
@@ -596,7 +596,7 @@ def process_statement_literals(stmt: TStatement, pool: ConstPool) -> None:
 def get_external_method_descriptor(args_types: list[Type], return_type: Type) -> str:
     type_mapping = {
         add_package_prefix("INTEGER"): "I",
-        add_package_prefix("FLOAT"): "F",
+        add_package_prefix("REAL"): "F",
         add_package_prefix("STRING"): "Ljava/lang/String;",
         add_package_prefix("BOOLEAN"): "I",
         add_package_prefix("CHARACTER"): "Ljava/lang/String;",

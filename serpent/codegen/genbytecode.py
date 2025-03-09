@@ -65,10 +65,11 @@ def generate_bytecode_for_real_const(
         desc="(F)V",
         fq_class_name=fq_class_name)
 
+    float_index = pool.add_float(const.value)
     bytecode = [
         New(class_index),
         Dup(),
-        Bipush(const.value),
+        Ldc(float_index),
         InvokeSpecial(methodref_idx)
     ]
 

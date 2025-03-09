@@ -174,7 +174,7 @@ class MulOp(BinaryFeature):
 class DivOp(BinaryFeature):
 
     def __init__(self, *, location: Location, left: Expr, right: Expr) -> None:
-        super().__init__(location, "/", "division", left, right)
+        super().__init__(location, "/", "quotinent", left, right)
 
 
 class MinusOp(UnaryFeature):
@@ -192,13 +192,13 @@ class PlusOp(UnaryFeature):
 class IntDivOp(BinaryFeature):
 
     def __init__(self, *, location: Location, left: Expr, right: Expr) -> None:
-        super().__init__(location, "//", "qiotient", left, right)
+        super().__init__(location, "//", "integer_qiotient", left, right)
 
 
 class ModOp(BinaryFeature):
 
     def __init__(self, *, location: Location, left: Expr, right: Expr) -> None:
-        super().__init__(location, "\\\\", "remainder", left, right)
+        super().__init__(location, "\\\\", "integer_remainder", left, right)
 
 
 class PowOp(BinaryFeature):
