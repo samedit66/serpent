@@ -145,6 +145,10 @@ public class PLATFORM {
         return self.raw_int + other;
     }
 
+    public static int INTEGER_is_less(PLATFORM self, int other) {
+        return self.raw_int < other ? 1 : 0;
+    }
+
     public static int INTEGER_is_equal(PLATFORM self, int other) {
         return self.raw_int == other ? 1 : 0;
     }
