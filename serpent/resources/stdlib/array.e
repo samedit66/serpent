@@ -1,6 +1,8 @@
 class
-    ARRAY [G]
+    ARRAY [G -> COMPARABLE]
 -- Динамический массив. Обертка над ArrayList в Java.
+-- В качестве элемента массива может быть любой тип,
+-- значения которого можно сравнивать.
 
 create
     make_filled
@@ -33,9 +35,39 @@ feature
     end
 
 feature
+-- Поиск элементов в массиве.
+
+    index_of (element: like item): INTEGER
+    -- Возвращает индекс элемента `element` в массиве.
+    -- В случае, если этого элемента нет в массиве, возвращается `upper + 1`.
+    local
+        i: INTEGER
+        found: BOOLEAN
+    do
+        Result := upper + 1
+
+        from
+            i := lower
+        until
+            i <= upper or found
+        loop
+            if element = item (i) then
+                Result := i
+                found := True
+            end
+
+            i := i + 1
+        end
+    end
+
+    has (element: like item): BOOLEAN
+    -- Проверяет, есть ли элемент `element` в массиве.
+    then index_of (element) /= upper + 1 end
+
+feature
 -- Изменение элементов массива.
 
-    put (element: G; index: INTEGER)
+    put (element: like item; index: INTEGER)
     -- Помещает в массив элемент element по индексу index.
     do
         check_index (index)
@@ -54,6 +86,32 @@ feature
         temp := item (i1)
         put (item (i2), i1)
         put (temp, i2)
+    end
+
+    bubble_sort
+    -- Выполняет сортировку массива методов пузырька.
+    local
+        i, j: INTEGER
+    do
+        from
+            i := lower
+        until
+            i <= upper
+        loop
+            from
+                j := i
+            until
+                j <= upper
+            loop
+                if item (i) > item (j) then
+                    swap (i, j)
+                end
+
+                j := j + 1
+            end
+
+            i := i + 1
+        end
     end
 
 feature
