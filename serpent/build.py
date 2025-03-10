@@ -42,7 +42,7 @@ def run(classpath: str,
         )
         if result.returncode != 0:
             error_collector.add_error(
-                CompilerError(f"Java compilation error: {result.stderr}", source="serpent")
+                CompilerError(f"Runtime error: {result.stderr}", source="serpent")
             )
     except Exception as e:
         error_collector.add_error(
