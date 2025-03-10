@@ -26,7 +26,7 @@ feature
 feature
 -- Доступ к элементам массива.
 
-    item (index: INTEGER): G
+    at, item (index: INTEGER): G
     -- Возвращает элемент под индексом index.
     do
         check_index (index)
@@ -49,7 +49,7 @@ feature
         from
             i := lower
         until
-            i <= upper or found
+            i > upper or found
         loop
             if element = item (i) then
                 Result := i
@@ -63,6 +63,24 @@ feature
     has (element: like item): BOOLEAN
     -- Проверяет, есть ли элемент `element` в массиве.
     then index_of (element) /= upper + 1 end
+
+    count_of, occurrences (element: like item): INTEGER
+    -- Считает, сколько раз заданный элемент встречается в массиве.
+    local
+        i: INTEGER
+    do
+        from
+            i := lower
+        until
+            i > upper
+        loop
+            if element = item (i) then
+                Result := Result + 1
+            end
+
+            i := i + 1
+        end        
+    end
 
 feature
 -- Добавление элементов в массив.
