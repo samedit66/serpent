@@ -17,14 +17,6 @@ feature
     end
 
 feature
--- Операции ввода/вывода
-
-    print
-        external "Java"
-        alias "com.eiffel.PLATFORM.ANY_print"
-    end
-
-feature
 -- Функции для работы со стандартным потоком ошибок.
 
     crash_with_message (message: STRING)

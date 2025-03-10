@@ -81,35 +81,14 @@ public class PLATFORM {
         raw_array = array;
     }
 
-    public static void ANY_print(PLATFORM self) throws UnsupportedEncodingException {
-        PrintStream out = new PrintStream(System.out, true, "UTF-8");
-
-        int valtype = self.value_type;
-        if ((valtype & BOOLEAN_TYPE) != 0) {
-            out.println(self.raw_int == 1 ? "True" : "False");
-        }
-        else if ((valtype & INTEGER_TYPE) != 0) {
-            out.println(self.raw_int);
-        }
-        else if ((valtype & REAL_TYPE) != 0) {
-            out.println(self.raw_float);
-        }
-        else if ((valtype & STRING_TYPE) != 0) {
-            out.println(self.raw_string);
-        }
-        else if ((valtype & OBJECT_TYPE) != 0) {
-            out.println("Object");
-        }
-        else if ((valtype & OBJECT_TYPE) != 0) {
-            out.println("Array");
-        }
-    }
-
     public static void ANY_crash_with_message(PLATFORM self, String message) throws UnsupportedEncodingException {
         PrintStream err = new PrintStream(System.err, true, "UTF-8");
         err.println(message);
         System.exit(1);
     }
+
+    /* ******************************************************** */
+    /* Методы для класса STRING */
 
     public static String STRING_concat(PLATFORM self, String other) {
         return self.raw_string + other;
@@ -119,12 +98,16 @@ public class PLATFORM {
         return self.raw_string.length();
     }
 
-    public static int INTEGER_plus(PLATFORM self, int other) {
-        return self.raw_int + other;
+    public static String STRING_to_string(PLATFORM self) {
+        return new String(self.raw_string);
     }
 
     /* ******************************************************** */
     /* Методы для класса INTEGER */
+
+    public static int INTEGER_plus(PLATFORM self, int other) {
+        return self.raw_int + other;
+    }
 
     public static int INTEGER_minus(PLATFORM self, int other) {
         return self.raw_int - other;
@@ -205,6 +188,10 @@ public class PLATFORM {
         return self.raw_float == other ? 1 : 0;
     }
 
+    public static String REAL_to_string(PLATFORM self) {
+        return Float.toString(self.raw_float);
+    }
+
     /* ******************************************************** */
     /* Методы для класса ARRAY */
     public static void ARRAY_initialize(PLATFORM self, int count, PLATFORM value) {
@@ -239,5 +226,12 @@ public class PLATFORM {
 
     public static void ARRAY_remove_raw(PLATFORM self, int index) {
         self.raw_array.remove(index);
+    }
+
+    /* ******************************************************** */
+    /* Методы для класса IO */
+    public static void IO_put_string(PLATFORM self, String s) throws UnsupportedEncodingException {
+        PrintStream out = new PrintStream(System.out, true, "UTF-8");
+        out.print(s);
     }
 }

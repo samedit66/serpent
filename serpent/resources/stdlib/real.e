@@ -4,6 +4,7 @@ class REAL
 inherit
     NUMERIC
     COMPARABLE
+    STRINGABLE
 
 feature
 -- Арифметические действия.
@@ -49,5 +50,14 @@ feature
     is_equal (other: like Current): BOOLEAN
         external "Java"
         alias "com.eiffel.PLATFORM.REAL_is_equal"
+    end
+
+feature
+-- Конвертация в другие типы.
+
+    out, to_string: STRING
+    -- Конвертирует в строку.
+        external "Java"
+        alias "com.eiffel.PLATFORM.REAL_to_string"
     end
 end

@@ -5,6 +5,7 @@ class
 inherit
     NUMERIC
     COMPARABLE
+    STRINGABLE
 
 feature
 -- Арифметические действия.
@@ -76,7 +77,7 @@ feature
         alias "com.eiffel.PLATFORM.INTEGER_to_real"
     end
 
-    to_string: STRING
+    out, to_string: STRING
     -- Конвертирует в строку.
         external "Java"
         alias "com.eiffel.PLATFORM.INTEGER_to_string"
