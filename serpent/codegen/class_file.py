@@ -282,7 +282,7 @@ class MethodsTable:
         descriptor_index = constant_pool.add_utf8(descriptor)
         code_name_index = constant_pool.add_utf8("Code")
 
-        start = 0 if isinstance(tmethod, TExternalMethod) else 1
+        start = 1
         variables = [
             (param[0], i)
             for i, param in enumerate(tmethod.parameters, start=start)]
@@ -291,7 +291,16 @@ class MethodsTable:
         bytecode = generate_bytecode_for_method(tmethod, fq_class_name, constant_pool, local_table)
         code = CodeAttribute(code_name_index, local_table, bytecode)
         method_info = MethodInfo(access_flags, name_index, descriptor_index, code)
-        self.methods.append(method_info)
+
+        already_in = False
+        for other in self.methods:
+            if (method_info.name_index == other.name_index
+                    and method_info.descriptor_index == other.descriptor_index):
+                already_in = True
+                break
+
+        if not already_in:
+            self.methods.append(method_info)
 
 
 def is_builtin_type(type_name: str) -> bool:
@@ -381,7 +390,7 @@ def make_default_constructor(type_name: str, pool: ConstPool) -> MethodInfo:
     general_constructor_index = pool.add_methodref(
         method_name="<init>",
         desc=desc,
-        fq_class_name=add_package_prefix("GENERAL"))
+        fq_class_name=add_package_prefix(ROOT_CLASS_NAME))
 
     bytecode = [
         Aload(0),
@@ -408,8 +417,8 @@ def make_default_constructors_for_general_class(pool: ConstPool) -> list[MethodI
         "()V"
     ]
 
-    fq_class_name = add_package_prefix("GENERAL")
-    fq_object_name = add_package_prefix("PLATFORM")
+    fq_class_name = add_package_prefix(ROOT_CLASS_NAME)
+    fq_object_name = add_package_prefix(PLATFORM_CLASS_NAME)
 
     # Словарь для определения необходимого количества локальных переменных для каждого конструктора
     required_locals = {

@@ -291,7 +291,11 @@ def make_const_pool(current: TClass, rest: list[TClass]) -> ConstPool:
             method_type = get_method_descriptor(
                 [param_type for (_, param_type) in method.parameters],
                 method.return_type)
-            pool.add_methodref(method.method_name, method_type, fq_class_name)
+            
+            try:
+                pool.find_methodref(method.method_name, fq_class_name, method_type)
+            except AssertionError:
+                pool.add_methodref(method.method_name, method_type, fq_class_name)
 
     for method in current.methods:
         match method:
@@ -497,8 +501,11 @@ def get_type_descriptor(typ: Type) -> str:
 
 
 def get_method_descriptor(args_types: list[Type], return_type: Type) -> str:
-    params_desc = "".join(get_type_descriptor(arg_type) for arg_type in args_types)
-    return_desc = get_type_descriptor(return_type)
+    params_desc = "".join(f"L{add_package_prefix(ROOT_CLASS_NAME)};" for _ in args_types)
+    if return_type.full_name == "<VOID>":
+        return_desc = "V"
+    else:
+        return_desc = f"L{add_package_prefix(ROOT_CLASS_NAME)};"
     return f"({params_desc}){return_desc}"
 
 

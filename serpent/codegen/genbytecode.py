@@ -6,6 +6,7 @@ from serpent.codegen.constpool import (
     make_fully_qualifed_name,
     split_package_path,
     PLATFORM_CLASS_NAME,
+    ROOT_CLASS_NAME,
     COMPILER_NAME)
 from serpent.codegen.bytecommand import *
 from serpent.codegen.preprocess import default_value_for
@@ -176,7 +177,7 @@ def generate_bytecode_for_create_expr(
 
     constructor_index = pool.find_methodref(
         method_name=tcreate_expr.constructor_name,
-        fq_class_name=create_fq_class_name)
+        fq_class_name=add_package_prefix(ROOT_CLASS_NAME))
     bytecode.append(InvokeVirtual(constructor_index))
 
     return bytecode
@@ -243,7 +244,8 @@ def generate_bytecode_for_feature_call(
     if tfeature_call.owner is not None:
         fq_class_name = add_package_prefix(
             tfeature_call.owner.expr_type.full_name)
-    methoref_idx = pool.find_methodref(tfeature_call.feature_name, fq_class_name)
+    methoref_idx = pool.find_methodref(
+        tfeature_call.feature_name, add_package_prefix(ROOT_CLASS_NAME))
     bytecode.append(InvokeVirtual(methoref_idx))
 
     return bytecode
@@ -760,8 +762,8 @@ def generate_bytecode_for_method(
             bytecode.append(Aload(0))
             
             for pname, ptype in parameters:
+                bytecode.append(Aload(local_table[pname]))
                 if ptype.full_name in ["STRING", "INTEGER", "BOOLEAN", "CHARACTER", "REAL"]:
-                    bytecode.append(Aload(local_table[pname]))
                     bytecode.extend(
                         unpack_builtin_type(ptype.full_name, pool))
 
