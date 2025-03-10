@@ -32,8 +32,6 @@ public class PLATFORM {
 
     // Поля для представления массива значений PLATFORM
     public ArrayList<PLATFORM> raw_array;
-    public int array_min_index;
-    public int array_max_index;
 
     public PLATFORM() {
         value_type = OBJECT_TYPE;
@@ -229,5 +227,13 @@ public class PLATFORM {
 
     public static void ARRAY_put_raw(PLATFORM self, PLATFORM element, int index) {
         self.raw_array.set(index, element);
+    }
+
+    public static void ARRAY_add_raw(PLATFORM self, PLATFORM element, int index) {
+        self.raw_array.add(index, element);
+    }
+
+    public static void ARRAY_remove_raw(PLATFORM self, int index) {
+        self.raw_array.remove(index);
     }
 }

@@ -65,6 +65,55 @@ feature
     then index_of (element) /= upper + 1 end
 
 feature
+-- Добавление элементов в массив.
+
+    add_first (element: like item)
+    -- Добавляет элемент в начало массива.
+    do
+        add (element, lower)
+    end
+
+    add_last (element: like item)
+    -- Добавляет элемент в конец массива.
+    do
+        add (element, upper)
+    end
+
+    insert, add (element: like item; index: INTEGER)
+    -- Добавляет элемент в массив по заданному индексу,
+    -- возможно, выполняя сдвиг элементов.
+    do
+        check_index (index)
+
+        add_raw (element, map_index (index))
+        upper := upper + 1
+    end
+
+feature
+-- Удаление элементов из массива.
+
+    remove_first
+    -- Удаляет первый элемент из массива.
+    do
+        remove (lower)
+    end
+
+    remove_last
+    -- Удаляет последний элемент из массива.
+    do
+        remove (upper)
+    end
+
+    remove (index: INTEGER)
+    -- Удаляет элемент из массива по индексу `index`.
+    do
+        check_index (index)
+
+        remove_raw (map_index (index))
+        upper := upper - 1
+    end
+
+feature
 -- Изменение элементов массива.
 
     put (element: like item; index: INTEGER)
@@ -172,8 +221,20 @@ feature {NONE}
     end
 
     put_raw (element: ANY; index: INTEGER)
-        -- Помещает значение `element` в массив по индексу `index`.
+        -- Заменяет значение по индексу `index` на `element`.
         external "Java"
         alias "com.eiffel.PLATFORM.ARRAY_put_raw"
-    end    
+    end
+
+    add_raw (element: ANY; index: INTEGER)
+    -- Помещает значение `element` в начало массива.
+        external "Java"
+        alias "com.eiffel.PLATFORM.ARRAY_add_raw"
+    end
+
+    remove_raw (index: INTEGER)
+    -- Удаляет элемент по индексу `index`.
+        external "Java"
+        alias "com.eiffel.PLATFORM.ARRAY_remove_raw"
+    end
 end
