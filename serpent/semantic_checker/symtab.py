@@ -360,7 +360,7 @@ def class_name_of_mangled_name(mangled_name: str) -> str:
 
 def guess_type(
         type_decl: TypeDecl,
-        class_decl_type: ClassDecl,
+        class_type: Type,
         feature_value_type_map: dict[str, Type],
         hierarchy: ClassHierarchy,
         generic_map: dict[str, Type]) -> Type:
@@ -375,12 +375,13 @@ def guess_type(
                     location=location)
             return type_of_class_decl_type(type_decl)
         case LikeCurrent(location=location):
-            return type_of_class_decl_type(class_decl_type)
+            return class_type
         case LikeFeature(location=location, feature_name=feature_name):
             mangled_name = mangle_name(
-                feature_name, class_name=class_decl_type.name)
+                feature_name, class_name=class_type.full_name)
             if mangled_name not in feature_value_type_map:
-                raise CompilerError(f"Unknown feature '{feature_name}'")
+                raise CompilerError(
+                    f"Unknown feature '{feature_name}'", location=type_decl.location)
             return feature_value_type_map[mangled_name]
         case _: assert False, f"Got unexpected TypeDecl: {type_decl}"
 
@@ -503,7 +504,7 @@ def make_class_symtab(
             param_name = mangle_name(param.name)
             param_type = guess_type(
                 param.value_type,
-                actuals,
+                class_type,
                 feature_value_type_map,
                 hierarchy,
                 generic_map)
@@ -532,7 +533,7 @@ def make_class_symtab(
             var_name = mangle_name(var_decl.name)
             var_type = guess_type(
                 var_decl.value_type,
-                actuals,
+                class_type,
                 feature_value_type_map,
                 hierarchy,
                 generic_map)
