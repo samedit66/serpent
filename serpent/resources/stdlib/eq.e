@@ -1,4 +1,6 @@
-deferred class EQ
+deferred class
+    EQ
+-- Родитель для всех объектов, которые можно сранивать между собой.
 
 feature
 

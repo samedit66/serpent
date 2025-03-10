@@ -16,7 +16,7 @@ feature
     end
 
     is_less_equal (other: like Current): BOOLEAN
-        -- Меньше или этот объект чем other или равен ему?
+        -- Меньше ли этот объект чем other или равен ему?
     then
         is_less (other) or else is_equal (other)
     end
@@ -28,7 +28,7 @@ feature
     end
 
     is_greater_equal (other: like Current): BOOLEAN
-        -- Больше или этот объект чем other или равен ему?
+        -- Больше ли этот объект чем other или равен ему?
     then
         is_greater (other) or is_equal (other)
     end
