@@ -76,14 +76,16 @@ feature
     add_last (element: like item)
     -- Добавляет элемент в конец массива.
     do
-        add (element, upper)
+        add (element, upper + 1)
     end
 
     insert, add (element: like item; index: INTEGER)
     -- Добавляет элемент в массив по заданному индексу,
     -- возможно, выполняя сдвиг элементов.
     do
-        check_index (index)
+        if index < lower or else index > upper + 1 then
+            crash_with_message (index.to_string + " not a valid index")
+        end
 
         add_raw (element, map_index (index))
         upper := upper + 1
@@ -138,19 +140,19 @@ feature
     end
 
     bubble_sort
-    -- Выполняет сортировку массива методов пузырька.
+    -- Выполняет сортировку массива методом пузырька.
     local
         i, j: INTEGER
     do
         from
             i := lower
         until
-            i <= upper
+            i > upper
         loop
             from
                 j := i
             until
-                j <= upper
+                j > upper
             loop
                 if item (i) > item (j) then
                     swap (i, j)
@@ -184,7 +186,7 @@ feature
 -- Проверки.
 
     valid_index (index: INTEGER): BOOLEAN
-    -- Проверяет, допустимый ли это индекс для массива
+    -- Проверяет, допустимый ли это индекс для массива.
     then lower <= index and then index <= upper end
 
 feature {NONE}
@@ -208,32 +210,33 @@ feature {NONE}
 -- Низкоуровневые функции взаимодействия с массивом.
 
     initialize (a_count: INTEGER; value: ANY)
-        -- Выполняет инициализацию массива заданного размера `a_count`,
-        -- задавая всем элементам значение `value`.
+    -- Выполняет инициализацию массива заданного размера `a_count`,
+    -- задавая всем элементам значение `value`.
         external "Java"
         alias "com.eiffel.PLATFORM.ARRAY_initialize"
     end
 
     item_raw (index: INTEGER): NONE
-        -- Возвращает элемент по индексу `index`.
+    -- Возвращает элемент по индексу `index`.
         external "Java"
         alias "com.eiffel.PLATFORM.ARRAY_item_raw"
     end
 
     put_raw (element: ANY; index: INTEGER)
-        -- Заменяет значение по индексу `index` на `element`.
+    -- Заменяет значение по индексу `index` на `element`.
         external "Java"
         alias "com.eiffel.PLATFORM.ARRAY_put_raw"
     end
 
     add_raw (element: ANY; index: INTEGER)
-    -- Помещает значение `element` в начало массива.
+    -- Помещает значение `element` по заданному индексу в массив,
+    -- выполняя смещение всех элементов справа на 1.
         external "Java"
         alias "com.eiffel.PLATFORM.ARRAY_add_raw"
     end
 
     remove_raw (index: INTEGER)
-    -- Удаляет элемент по индексу `index`.
+        -- Удаляет элемент по индексу `index`.
         external "Java"
         alias "com.eiffel.PLATFORM.ARRAY_remove_raw"
     end

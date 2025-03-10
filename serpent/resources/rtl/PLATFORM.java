@@ -233,6 +233,10 @@ public class PLATFORM {
         self.raw_array.add(index, element);
     }
 
+    public static void ARRAY_add_last(PLATFORM self, PLATFORM element) {
+        self.raw_array.add(self.raw_array.size(), element);
+    }
+
     public static void ARRAY_remove_raw(PLATFORM self, int index) {
         self.raw_array.remove(index);
     }

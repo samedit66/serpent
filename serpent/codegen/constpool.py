@@ -503,7 +503,7 @@ def get_type_descriptor(typ: Type) -> str:
     if typ.name == "<VOID>":
         return "V"
     # Если имя уже содержит '/', считаем его полностью квалифицированным
-    fq_name = typ.name if "/" in typ.name else add_package_prefix(typ.name)
+    fq_name = typ.full_name if "/" in typ.full_name else add_package_prefix(typ.full_name)
     return f"L{fq_name};"
 
 
