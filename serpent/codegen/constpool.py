@@ -44,9 +44,6 @@ class ConstPool:
     """Полное квалифицированное имя класса, для которого составляется таблица"""
     constants: list[CONSTANT] = field(default_factory=list)
     """Список всех констант, которые встречаются в теле класса"""
-    # Мне очень неудобно за этот код...
-    external_methods: dict[str, tuple[str, list[tuple[str, Type]]]] = field(default_factory=dict)
-    """Список всех внешних методов, нужен на этапе генерации TFeatureCall"""
 
     def __post_init__(self) -> None:
         self.add_class(self.fq_class_name)
@@ -57,12 +54,6 @@ class ConstPool:
     def to_bytes(self) -> bytes:
         """Возвращает таблицу констант непосредственно в виде байтов"""
         return b"".join(const.to_bytes() for const in self.constants)
-    
-    def is_external(self, method_name: str) -> bool:
-        return method_name in self.external_methods
-
-    def get_alias_for_external_method(self, method_name: str):
-        return self.external_methods[method_name]
 
     @property
     def count(self) -> int:
@@ -316,7 +307,6 @@ def make_const_pool(current: TClass, rest: list[TClass]) -> ConstPool:
                         f"see method '{method.method_name}' of class '{pool.fq_class_name}'",
                         source=COMPILER_NAME)
                 # В обход всего и вся добавляем имя внешнего метода
-                pool.external_methods[method_name] = alias
                 java_method_name = parts[-1]
                 fq_class_name = make_fully_qualifed_name(parts[:-1])
                 external_method_type = get_external_method_descriptor(
@@ -347,7 +337,6 @@ def make_const_pool(current: TClass, rest: list[TClass]) -> ConstPool:
                             f"see method '{method.method_name}' of class '{pool.fq_class_name}'",
                             source=COMPILER_NAME)
                     # В обход всего и вся добавляем имя внешнего метода
-                    pool.external_methods[method_name] = (alias, parameters)
                     java_method_name = parts[-1]
                     fq_class_name = make_fully_qualifed_name(parts[:-1])
                     external_method_type = get_external_method_descriptor(

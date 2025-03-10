@@ -226,64 +226,25 @@ def generate_bytecode_for_feature_call(
     
     if tfeature_call.owner is None:
         this = [Aload(0)]
-        bytecode.extend(this)
     else:
         this = generate_bytecode_for_expr(
                 tfeature_call.owner,
                 fq_class_name,
                 pool,
                 local_table)
-        bytecode.extend(this)
+    
+    bytecode.extend(this)
 
-    for i, arg in enumerate(tfeature_call.arguments):
+    for arg in tfeature_call.arguments:
         arg_bytecode = generate_bytecode_for_expr(
             arg, fq_class_name, pool, local_table)
-        
         bytecode.extend(arg_bytecode)
 
-        if pool.is_external(tfeature_call.feature_name):
-            _, parameters = pool.get_alias_for_external_method(tfeature_call.feature_name)
-            _, param_type = parameters[i]
-
-            if param_type.full_name in ["STRING", "INTEGER", "BOOLEAN", "CHARACTER", "REAL"]:
-                bytecode.extend(
-                    unpack_builtin_type(param_type.full_name, pool))
-
-    if pool.is_external(tfeature_call.feature_name):
-        alias, _ = pool.get_alias_for_external_method(tfeature_call.feature_name)
-        parts = split_package_path(alias)
-        # 1. Получить имя и класс static метода
-        # Тут нет проверок на корректность задания alias,
-        # это должно проверяться на этапе заполнения таблицы констант
-        ext_method_name = parts[-1]
-        ext_fq_class_name = make_fully_qualifed_name(parts[:-1])
-        # 2. Сгенерировать вызов invokestatic
-        methodref_index = pool.find_methodref(
-            ext_method_name, fq_class_name=ext_fq_class_name)
-        bytecode.append(InvokeStatic(methodref_index))
-        # 3. Взависимости от возвращаемого значения метода,
-        #    произвести соотвествующую "распаковку" и "упаковку"
-        #    в зависимости от типа возвращаемого значения
-        return_type = tfeature_call.expr_type
-        if return_type.full_name != "<VOID>":
-            match return_type.full_name:
-                case "STRING":
-                    bytecode.extend(pack_builtin_type("STRING", pool))
-                case "CHARACTER":
-                    bytecode.extend(pack_builtin_type("CHARACTER", pool))
-                case "INTEGER":
-                    bytecode.extend(pack_builtin_type("INTEGER", pool))
-                case "REAL":
-                    bytecode.extend(pack_builtin_type("REAL", pool))
-                case "BOOLEAN":
-                    bytecode.extend(pack_builtin_type("BOOLEAN", pool))
-
     if tfeature_call.owner is not None:
-        fq_class_name = add_package_prefix(tfeature_call.owner.expr_type.full_name)
+        fq_class_name = add_package_prefix(
+            tfeature_call.owner.expr_type.full_name)
     methoref_idx = pool.find_methodref(tfeature_call.feature_name, fq_class_name)
-    
-    if not pool.is_external(tfeature_call.feature_name):
-        bytecode.append(InvokeVirtual(methoref_idx))
+    bytecode.append(InvokeVirtual(methoref_idx))
 
     return bytecode
 
@@ -792,12 +753,48 @@ def generate_bytecode_for_method(
                     fq_class_name,
                     pool,
                     local_table))
+        case TExternalMethod(
+                parameters=parameters,
+                return_type=return_type,
+                alias=alias):
+            bytecode.append(Aload(0))
+            
+            for pname, ptype in parameters:
+                if ptype.full_name in ["STRING", "INTEGER", "BOOLEAN", "CHARACTER", "REAL"]:
+                    bytecode.append(Aload(local_table[pname]))
+                    bytecode.extend(
+                        unpack_builtin_type(ptype.full_name, pool))
+
+            parts = split_package_path(alias)
+            # 1. Получить имя и класс static метода
+            #    Тут нет проверок на корректность задания alias,
+            #    это должно проверяться на этапе заполнения таблицы констант
+            ext_method_name = parts[-1]
+            ext_fq_class_name = make_fully_qualifed_name(parts[:-1])
+            # 2. Сгенерировать вызов invokestatic
+            methodref_index = pool.find_methodref(
+                ext_method_name, fq_class_name=ext_fq_class_name)
+            bytecode.append(InvokeStatic(methodref_index))
     
     return_type = method.return_type
     is_function = return_type.full_name != "<VOID>"
     if is_function:
-        if pool.is_external(method.method_name):
-            bytecode.append(Aconst_null())
+        if isinstance(method, TExternalMethod):
+            # 3. Взависимости от возвращаемого значения метода,
+            #    произвести соотвествующую "распаковку" и "упаковку"
+            #    в зависимости от типа возвращаемого значения
+            if return_type.full_name != "<VOID>":
+                match return_type.full_name:
+                    case "STRING":
+                        bytecode.extend(pack_builtin_type("STRING", pool))
+                    case "CHARACTER":
+                        bytecode.extend(pack_builtin_type("CHARACTER", pool))
+                    case "INTEGER":
+                        bytecode.extend(pack_builtin_type("INTEGER", pool))
+                    case "REAL":
+                        bytecode.extend(pack_builtin_type("REAL", pool))
+                    case "BOOLEAN":
+                        bytecode.extend(pack_builtin_type("BOOLEAN", pool))
         else:
             bytecode.append(Aload(local_table["local_Result"]))
         bytecode.append(Areturn())

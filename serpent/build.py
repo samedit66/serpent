@@ -21,8 +21,8 @@ from serpent.codegen.class_file import make_class_file
 
 def run(classpath: str,
         error_collector: ErrorCollector,
-        main_class_name: str = "APPLICATION",
-        eiffel_package: str = "com.eiffel") -> None:
+        main_class_name: str,
+        eiffel_package: str) -> None:
     fq_main_class = f"{eiffel_package}.{main_class_name}"
     # В модуле codegen отсутствует генерация stack map frames,
     # поэтому запускаем JVM с флагом компиляции -noverify
@@ -52,10 +52,10 @@ def run(classpath: str,
 
 def make_jar(build_dir: str,
              error_collector: ErrorCollector,
-             main_class_name: str = "APPLICATION",
-             eiffel_package: str = "com.eiffel",
-             jar_name: str = "app.jar",
-             output_dir: Path = Path(".")) -> None:
+             main_class_name: str,
+             eiffel_package: str,
+             jar_name: str,
+             output_dir: Path) -> None:
     """
     Создает jar-файл из всех файлов, содержащихся в каталоге build_dir.
     Jar-файл включает всю структуру директорий, начиная с build_dir.
@@ -110,11 +110,11 @@ def build_class_files(
         java_source_dirs: list[str],
         parser_path: str,
         error_collector: ErrorCollector,
-        build_dir: str = "build",
-        java_version: int = 8,
-        main_class_name: str = "APPLICATION",
-        main_routine_name: str = "make",
-        eiffel_package: str = "com.eiffel") -> None:
+        java_version: int,
+        build_dir: str,
+        main_class_name: str,
+        main_routine_name: str,
+        eiffel_package: str) -> None:
     """
     Автоматизирует процесс сборки проекта:
       - Парсит и компилирует исходные файлы Eiffel, генерируя .class файлы,
@@ -253,7 +253,7 @@ def compile_java_files(
         java_source_dirs,
         error_collector: ErrorCollector,
         build_dir: Path,
-        java_version: int = 8) -> None:
+        java_version) -> None:
     make_build_dir(build_dir)
 
     java_files = []

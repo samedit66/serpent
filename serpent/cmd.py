@@ -90,6 +90,7 @@ def main() -> None:
             args.classpath,
             error_collector,
             args.mainclass,
+            eiffel_package="com.eiffel",
         )
 
     elif args.command == "jar":
@@ -99,7 +100,7 @@ def main() -> None:
             main_class_name=args.mainclass,
             eiffel_package="com.eiffel",
             jar_name=args.jarname,
-            output_dir=args.outputdir
+            output_dir=args.outputdir,
         )
 
     if not error_collector.ok():

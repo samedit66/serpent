@@ -6,6 +6,7 @@ from serpent.semantic_checker.type_check import (
     TClass,
     TMethod,
     TUserDefinedMethod,
+    TExternalMethod,
     TField)
 from serpent.codegen.constpool import (
     ConstPool,
@@ -281,7 +282,7 @@ class MethodsTable:
         descriptor_index = constant_pool.add_utf8(descriptor)
         code_name_index = constant_pool.add_utf8("Code")
 
-        start = 0 if constant_pool.is_external(tmethod.method_name) else 1
+        start = 0 if isinstance(tmethod, TExternalMethod) else 1
         variables = [
             (param[0], i)
             for i, param in enumerate(tmethod.parameters, start=start)]
