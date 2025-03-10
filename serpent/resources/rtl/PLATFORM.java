@@ -79,6 +79,7 @@ public class PLATFORM {
     }
 
     public PLATFORM(ArrayList<PLATFORM> array) {
+        value_type = ARRAY_TYPE;
         raw_array = array;
     }
 
@@ -104,6 +105,12 @@ public class PLATFORM {
         else if ((valtype & OBJECT_TYPE) != 0) {
             out.println("Array");
         }
+    }
+
+    public static void ANY_crash_with_message(PLATFORM self, String message) throws UnsupportedEncodingException {
+        PrintStream err = new PrintStream(System.err, true, "UTF-8");
+        err.println(message);
+        System.exit(1);
     }
 
     public static String STRING_concat(PLATFORM self, String other) {
@@ -198,7 +205,7 @@ public class PLATFORM {
 
     /* ******************************************************** */
     /* Методы для класса ARRAY */
-    public static PLATFORM ARRAY_make_filled_with_raw(PLATFORM self, int count, PLATFORM value) {
+    public static void ARRAY_initialize(PLATFORM self, int count, PLATFORM value) {
         if (count < 0) {
             throw new IllegalArgumentException("'count' cannot be negative");
         }
@@ -208,7 +215,8 @@ public class PLATFORM {
             array.add(i, value);
         }
 
-        return new PLATFORM(array);
+        self.value_type = ARRAY_TYPE;
+        self.raw_array = array;
     }
 
     public static PLATFORM ARRAY_item_raw(PLATFORM self, int index) {

@@ -235,22 +235,22 @@ def generate_bytecode_for_feature_call(
                 local_table)
         bytecode.extend(this)
 
-    # Для внешних методов необходимо добавить ссылку
-    # на this - он идет первым аргументов во всех внешних методах
-    if pool.is_external(tfeature_call.feature_name):
-        bytecode.extend(this)
-
-    for arg in tfeature_call.arguments:
+    for i, arg in enumerate(tfeature_call.arguments):
         arg_bytecode = generate_bytecode_for_expr(
             arg, fq_class_name, pool, local_table)
-        bytecode.extend(arg_bytecode)
         
+        bytecode.extend(arg_bytecode)
+
         if pool.is_external(tfeature_call.feature_name):
-            bytecode.extend(
-                unpack_builtin_type(arg.expr_type.full_name, pool))
+            _, parameters = pool.get_alias_for_external_method(tfeature_call.feature_name)
+            _, param_type = parameters[i]
+
+            if param_type.full_name in ["STRING", "INTEGER", "BOOLEAN", "CHARACTER", "REAL"]:
+                bytecode.extend(
+                    unpack_builtin_type(param_type.full_name, pool))
 
     if pool.is_external(tfeature_call.feature_name):
-        alias = pool.get_alias_for_external_method(tfeature_call.feature_name)
+        alias, _ = pool.get_alias_for_external_method(tfeature_call.feature_name)
         parts = split_package_path(alias)
         # 1. Получить имя и класс static метода
         # Тут нет проверок на корректность задания alias,
@@ -277,10 +277,6 @@ def generate_bytecode_for_feature_call(
                     bytecode.extend(pack_builtin_type("REAL", pool))
                 case "BOOLEAN":
                     bytecode.extend(pack_builtin_type("BOOLEAN", pool))
-                case other_type:
-                    print(
-                        f"Return type '{other_type}' of external method '{ext_method_name}' ({alias}) is not guaranteed to work correctly "
-                        "with external methods. When possible, please use one of the following types instead: STRING, CHARACTER, INTEGER, REAL, BOOLEAN.")
 
     if tfeature_call.owner is not None:
         fq_class_name = add_package_prefix(tfeature_call.owner.expr_type.full_name)
@@ -288,6 +284,7 @@ def generate_bytecode_for_feature_call(
     
     if not pool.is_external(tfeature_call.feature_name):
         bytecode.append(InvokeVirtual(methoref_idx))
+
     return bytecode
 
 
@@ -795,17 +792,8 @@ def generate_bytecode_for_method(
                     fq_class_name,
                     pool,
                     local_table))
-        case TExternalMethod(method_name=method_name, return_type=return_type):
-            alias = pool.get_alias_for_external_method(method_name)
-            parts = split_package_path(alias)
-            ext_method_name = parts[-1]
-            ext_fq_class_name = make_fully_qualifed_name(parts[:-1])
-            if return_type.full_name not in [
-                    "STRING", "CHARACTER", "INTEGER", "REAL", "BOOLEAN", "<VOID>"]:
-                print(
-                        f"Return type '{return_type.full_name}' of external method '{ext_method_name}' ({alias}) is not guaranteed to work correctly "
-                        "with external methods. When possible, please use one of the following types instead: STRING, CHARACTER, INTEGER, REAL, BOOLEAN.")
     
+    return_type = method.return_type
     is_function = return_type.full_name != "<VOID>"
     if is_function:
         if pool.is_external(method.method_name):

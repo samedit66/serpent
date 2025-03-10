@@ -326,9 +326,9 @@ def parse(
     try:
         json_ast = json.loads(stdout)
         return json_ast
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as err:
         error_collector.add_error(
-            CompilerError("Failed to load JSON AST: invalid JSON output")
+            CompilerError(f"Failed to load JSON AST: invalid JSON output: {err}")
         )
     
     return None

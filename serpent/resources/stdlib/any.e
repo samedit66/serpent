@@ -32,4 +32,13 @@ feature
     then
         Void
     end
+
+feature
+
+    crash_with_message (message: STRING)
+    -- Печатает сообщение об ошибке в System.err, после чего
+    -- завершает работу приложения с кодом 1.
+        external "Java"
+        alias "com.eiffel.PLATFORM.ANY_crash_with_message"
+    end
 end

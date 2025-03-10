@@ -369,7 +369,7 @@ def make_bracket_access(bracket_access_dict: dict) -> BracketAccess:
     return BracketAccess(
         location=Location(**bracket_access_dict["location"]),
         left=make_expr(bracket_access_dict["source"]),
-        indices=make_expr(bracket_access_dict["index"]),
+        right=make_expr(bracket_access_dict["index"]),
     )
 
 
