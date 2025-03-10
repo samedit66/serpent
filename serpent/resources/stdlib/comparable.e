@@ -4,6 +4,9 @@ deferred class
 -- При наследовании необходимо реализовать два метода: is_less и is_equal,
 -- остальные операторы сравнения имеют реализацию по умолчанию.
 
+inherit
+    EQ
+
 feature
 -- Операции сравнения.
 
@@ -28,16 +31,5 @@ feature
         -- Больше или этот объект чем other или равен ему?
     then
         is_greater (other) or is_equal (other)
-    end
-
-    is_equal (other: like Current): BOOLEAN
-        -- Равен ли этот объект другому other?
-        deferred
-    end
-
-    is_not_equal (other: like Current): BOOLEAN
-        -- Не равен ли этот объект другому other?
-    then
-        not is_equal (other)
     end
 end
