@@ -3,26 +3,8 @@ class
 -- Целые числа. Обертка для типа int в Java.
 
 inherit
-    ANY
-    redefine
-        default_value
-    end
     NUMERIC
-    redefine
-        default_value
-    end
     COMPARABLE
-    redefine
-        default_value
-    end
-
-feature
--- Характеристики.
-
-    default_value: like Current
-    then
-        0
-    end
 
 feature
 -- Арифметические действия.
@@ -89,7 +71,14 @@ feature
 -- Конвертация в другие типы.
 
     to_real: REAL
+    -- Конвертирует в действительное число.
         external "Java"
         alias "com.eiffel.PLATFORM.INTEGER_to_real"
+    end
+
+    to_string: STRING
+    -- Конвертирует в строку.
+        external "Java"
+        alias "com.eiffel.PLATFORM.INTEGER_to_string"
     end
 end

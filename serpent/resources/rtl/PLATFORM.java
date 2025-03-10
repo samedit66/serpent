@@ -168,6 +168,10 @@ public class PLATFORM {
         return (float) self.raw_int;
     }
 
+    public static String INTEGER_to_string(PLATFORM self) {
+        return Integer.toString(self.raw_int);
+    }
+
     /* ******************************************************** */
     /* Методы для класса REAL */
 

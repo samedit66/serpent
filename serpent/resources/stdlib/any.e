@@ -25,15 +25,7 @@ feature
     end
 
 feature
--- Характеристики.
-
-    default_value: like Current
-    -- Значение по умолчанию для заданного типа объекта.
-    then
-        Void
-    end
-
-feature
+-- Функции для работы со стандартным потоком ошибок.
 
     crash_with_message (message: STRING)
     -- Печатает сообщение об ошибке в System.err, после чего
