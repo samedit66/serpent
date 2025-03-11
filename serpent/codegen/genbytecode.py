@@ -331,7 +331,7 @@ def generate_bytecode_for_or(left: TExpr,
     # Складываем два int
     bytecode.append(Iadd())
 
-    bytecode.append(Ifne(0))
+    bytecode.append(Ifeq(0))
     ifne_index = len(bytecode) - 1
 
     bytecode.append(Iconst_i(1))
@@ -343,7 +343,7 @@ def generate_bytecode_for_or(left: TExpr,
     
     bytecode.append(Nop())
 
-    bytecode[ifne_index] = Ifne(bytesize(bytecode[ifne_index:goto_index+1]))
+    bytecode[ifne_index] = Ifeq(bytesize(bytecode[ifne_index:goto_index+1]))
     bytecode[goto_index] = Goto(bytesize(bytecode[goto_index:len(bytecode) - 1]))
 
     bytecode.extend(pack_boolean(pool))
