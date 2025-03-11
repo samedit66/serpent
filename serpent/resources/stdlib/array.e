@@ -5,10 +5,19 @@ class
 -- значения которого можно сравнивать.
 
 create
+    make_empty,
     make_filled
 
 feature
 -- Конструкторы массива.
+
+    make_empty (size: INTEGER)
+    -- Создает пустой массив с заданнным размерам.
+    -- Допустимые индексы массива - [0..size - 1].
+    -- По умолчанию всем элементам задается значение Void.
+    do
+        make_filled (Void, 0, size - 1)
+    end
 
     make_filled (fill_value: G; min_index, max_index: INTEGER)
     -- Создает массив с заданным промежутком индексов [`min_index`..`max_index`]
