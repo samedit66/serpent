@@ -37,5 +37,4 @@ feature
         external "Java"
         alias "com.eiffel.PLATFORM.CHARACTER_to_string"
     end
-
 end

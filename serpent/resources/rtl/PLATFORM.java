@@ -332,4 +332,18 @@ public class PLATFORM {
     public static String CHARACTER_to_string(PLATFORM self) {
         return STRING_to_string(self);
     }
+
+    /* Методы для класса BOOLEAN */
+    
+    public static int BOOLEAN_is_less(PLATFORM self, int other) {
+        return INTEGER_is_less(self, other);
+    }
+
+    public static int BOOLEAN_is_equal(PLATFORM self, int other) {
+        return INTEGER_is_equal(self, other);
+    }
+
+    public static String BOOLEAN_to_string(PLATFORM self) {
+        return self.raw_int == 1 ? "True" : "False";
+    }
 }
