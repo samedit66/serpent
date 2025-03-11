@@ -5,18 +5,20 @@ class
 -- значения которого можно сравнивать.
 
 create
-    make_empty,
+    with_capacity,
     make_filled
 
 feature
 -- Конструкторы массива.
 
-    make_empty (size: INTEGER)
-    -- Создает пустой массив с заданнным размерам.
-    -- Допустимые индексы массива - [0..size - 1].
-    -- По умолчанию всем элементам задается значение Void.
+    with_capacity (capacity, low: INTEGER)
+    -- Создает массив с заданным размером `capacity` и
+    -- минимальным индексом `low`. По умолчанию всем элементам
+    -- устаналивается значение Void.
     do
-        make_filled (Void, 0, size - 1)
+        initialize (capacity, Void)
+        lower := low
+        upper := low - 1
     end
 
     make_filled (fill_value: G; min_index, max_index: INTEGER)
