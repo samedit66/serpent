@@ -100,17 +100,18 @@ escape(char *str) {
     int len = strlen(str);
     for (int i = 0; i < len; i++, str++) {
         switch (*str) {
-            case '\0': StringBuffer_append(strbuf, "\\0");  break;
-            case '\a': StringBuffer_append(strbuf, "\\a");  break;
+            // case '\0': StringBuffer_append(strbuf, "\\0");  break;
+            // case '\a': StringBuffer_append(strbuf, "\\a");  break;
             case '\b': StringBuffer_append(strbuf, "\\b");  break;
             case '\f': StringBuffer_append(strbuf, "\\f");  break;
             case '\n': StringBuffer_append(strbuf, "\\n");  break;
             case '\r': StringBuffer_append(strbuf, "\\r");  break;
             case '\t': StringBuffer_append(strbuf, "\\t");  break;
-            case '\v': StringBuffer_append(strbuf, "\\v");  break;
+            // case '\v': StringBuffer_append(strbuf, "\\v");  break;
             case '\\': StringBuffer_append(strbuf, "\\\\"); break;
-            case '\?': StringBuffer_append(strbuf, "\\\?"); break;
-            case '\'': StringBuffer_append(strbuf, "\\\'"); break;
+            case '/': StringBuffer_append(strbuf, "\\/"); break;
+            // case '\?': StringBuffer_append(strbuf, "\\\?"); break;
+            // case '\'': StringBuffer_append(strbuf, "\\\'"); break;
             case '\"': StringBuffer_append(strbuf, "\\\""); break;
             default:
                 // Код ниже был закомментирован в процессе реализации поддержки
