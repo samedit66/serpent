@@ -18,7 +18,7 @@ feature
     do
         initialize (capacity, Void)
         lower := low
-        upper := low - 1
+        upper := low + capacity - 1
     end
 
     make_filled (fill_value: G; min_index, max_index: INTEGER)
