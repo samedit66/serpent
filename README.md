@@ -29,11 +29,17 @@ cd app
 
 После выполнения в папке `app` появится файл `app.e`:
 ```eiffel
-class APPLICATION
+class
+    APPLICATION
+
+inherit
+    IO
+
 feature
+
     make
     do
-        "Hello, Eiffel!".print
+        println ("Hello, world!")
     end
 end
 ```
