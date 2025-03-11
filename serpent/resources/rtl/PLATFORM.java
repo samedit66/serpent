@@ -283,9 +283,9 @@ public class PLATFORM {
         return Integer.parseInt(line.trim());
     }
 
-    public static double IO_input_real(PLATFORM self) throws IOException {
+    public static float IO_input_real(PLATFORM self) throws IOException {
         String line = in.readLine();
-        return Double.parseDouble(line.trim());
+        return Float.parseFloat(line.trim());
     }
 
     public static String IO_input_character(PLATFORM self) throws IOException {
