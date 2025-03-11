@@ -154,6 +154,10 @@ def generate_bytecode_for_void_const() -> list[ByteCommand]:
     return [Aconst_null()]
 
 
+def generate_bytecode_for_current_const() -> list[ByteCommand]:
+    return [Aload(0)]
+
+
 def generate_bytecode_for_create_expr(
         tcreate_expr: TCreateExpr,
         fq_class_name: str,
@@ -494,6 +498,8 @@ def generate_bytecode_for_expr(
                 texpr, fq_class_name, pool, local_table)
         case TVariable():
             return generate_bytecode_for_variable(texpr, local_table)
+        case TCurrent():
+            return generate_bytecode_for_current_const()
         case TBinaryOp(
                 operator_name=operator_name,
                 left=left,

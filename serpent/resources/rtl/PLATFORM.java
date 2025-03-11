@@ -107,6 +107,36 @@ public class PLATFORM {
         return new String(self.raw_string);
     }
 
+    public static int three_way_comparison(String s1, String s2) {
+        int index1 = 0;
+        int index2 = 0;
+        while (index1 < s1.length() && index2 < s2.length()) {
+            int cp1 = s1.codePointAt(index1);
+            int cp2 = s2.codePointAt(index2);
+            if (cp1 != cp2) {
+                return cp1 - cp2;
+            }
+            index1 += Character.charCount(cp1);
+            index2 += Character.charCount(cp2);
+        }
+        // Если все codepoint совпадают, то строка с оставшимися символами считается большей.
+        if (index1 < s1.length()) {
+            return 1;
+        }
+        if (index2 < s2.length()) {
+            return -1;
+        }
+        return 0;
+    }
+
+    public static int STRING_is_less(PLATFORM self, String other) {
+        return three_way_comparison(self.raw_string, other) < 0 ? 1 : 0;
+    }
+
+    public static int STRING_is_equal(PLATFORM self, String other) {
+        return three_way_comparison(self.raw_string, other) == 0 ? 1 : 0;
+    }
+
     /* ******************************************************** */
     /* Методы для класса INTEGER */
 

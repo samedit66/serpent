@@ -32,4 +32,37 @@ feature
     then
         is_greater (other) or is_equal (other)
     end
+
+    max (other: like Current): like Current
+	-- Возвращает больший объект между собой и `other`.
+	do
+		if Current >= other then
+			Result := Current
+		else
+			Result := other
+		end
+	end
+			
+	min (other: like Current): like Current
+    -- Возвращает меньший объект между собой и `other`.
+	do
+		if Current <= other then
+			Result := Current
+		else
+			Result := other
+		end
+	end
+
+	three_way_comparison (other: like Current): INTEGER
+    -- Если текущий объект равен `other`, возвращается 0.
+    -- Если текущий объект меньше `other`, возвращается -1.
+    -- Если текущий объект больше `other`, возвращается 1.
+	do
+		if Current < other then
+			Result := -1
+		elseif other < Current then
+			Result := 1
+		end
+	end
+
 end

@@ -3,6 +3,7 @@ class
 -- Класс для представления строк. Обертка над типом String в Java.
 
 inherit
+    COMPARABLE
     STRINGABLE
 
 feature
@@ -21,6 +22,19 @@ feature
         -- Количество символов в строке.
         external "Java"
         alias "com.eiffel.PLATFORM.STRING_count"
+    end
+
+feature
+-- Операции сравнения.
+
+    is_less (other: like Current): BOOLEAN
+        external "Java"
+        alias "com.eiffel.PLATFORM.STRING_is_less"
+    end
+
+    is_equal (other: like Current): BOOLEAN
+        external "Java"
+        alias "com.eiffel.PLATFORM.STRING_is_equal"
     end
 
 feature

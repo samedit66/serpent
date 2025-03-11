@@ -60,6 +60,11 @@ class TVoidConst(TExpr):
 
 
 @dataclass(frozen=True)
+class TCurrent(TExpr):
+    pass
+
+
+@dataclass(frozen=True)
 class TFeatureCall(TExpr):
     feature_name: str
     arguments: list[TExpr] = field(default_factory=list)
@@ -718,6 +723,8 @@ def annotate_expr_with_types(
 result. Use 'Result' only within functions that return a value",
                     location=result_const.location)
             return TVariable(feature_value_type, mangle_name("Result"))
+        case CurrentConst():
+            return TCurrent(expr_type=symtab.type_of)
         case _:
             raise CompilerError(
                 f"Unsupported expression type: {expr}",
