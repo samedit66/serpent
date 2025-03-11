@@ -587,6 +587,7 @@ def generate_bytecode_for_ifstmt(
         bytecode.extend(
             generate_bytecode_for_expr(
                 condition, fq_class_name, pool, local_table))
+        bytecode.extend(unpack_boolean(pool))
         bytecode.append(Ifeq(0))
         ifeqs.append(len(bytecode) - 1)
 

@@ -60,7 +60,7 @@ feature
     do
         if Current < other then
             Result := -1
-        elseif Curret > other then
+        elseif Current > other then
             Result := 1
         end
     end
