@@ -138,7 +138,7 @@ def generate_bytecode_for_character_const(
         desc="(Ljava/lang/String;)V",
         fq_class_name=fq_class_name)
 
-    index = pool.find_string(const.value)
+    index = pool.add_string(const.value)
     ldc = Ldc(index) if index < 256 else Ldc_w(index)
     bytecode = [
         New(class_index),

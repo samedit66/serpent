@@ -229,6 +229,7 @@ public class PLATFORM {
 
     /* ******************************************************** */
     /* Методы для класса ARRAY */
+
     public static void ARRAY_initialize(PLATFORM self, int count, PLATFORM value) {
         if (count < 0) {
             throw new IllegalArgumentException("'count' cannot be negative");
@@ -263,23 +264,16 @@ public class PLATFORM {
         self.raw_array.remove(index);
     }
 
-    /* ******************************************************** */
+    /* Методы для класса IO */
 
     private static final BufferedReader in =
         new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
 
-    /* Методы для класса IO */
     public static void IO_put_string(PLATFORM self, String s) throws UnsupportedEncodingException {
         PrintStream out = new PrintStream(System.out, true, "UTF-8");
         out.print(s);
     }
 
-    /**
-     * Считывает строку со стандартного ввода и возвращает её.
-     * @param self - ссылка на объект PLATFORM
-     * @return введённая строка
-     * @throws IOException
-     */
     public static String IO_input_string(PLATFORM self) throws IOException {
         return in.readLine();
     }
@@ -319,5 +313,23 @@ public class PLATFORM {
         }
 
         return new String(Character.toChars(codepoint));
+    }
+
+    /* Методы для класса CHARACTER */
+
+    public static int CHARACTER_is_less(PLATFORM self, String other) {
+        return STRING_is_less(self, other);
+    }
+
+    public static int CHARACTER_is_equal(PLATFORM self, String other) {
+        return STRING_is_equal(self, other);
+    }
+
+    public static int CHARACTER_code_point(PLATFORM self) {
+        return self.raw_string.codePointAt(0);
+    }
+
+    public static String CHARACTER_to_string(PLATFORM self) {
+        return STRING_to_string(self);
     }
 }
