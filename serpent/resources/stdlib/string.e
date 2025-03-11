@@ -27,9 +27,17 @@ feature
 -- Конвертация в другие типы.
 
     out, to_string: STRING
-    -- Данный метод здесь определен только для того, чтобы
-    -- обеспечить удобную работу с методом print из класса IO.
         external "Java"
         alias "com.eiffel.PLATFORM.STRING_to_string"
+    end
+
+    to_integer: INTEGER
+        external "Java"
+        alias "com.eiffel.PLATFORM.STRING_to_integer"
+    end
+
+    to_real: REAL
+        external "Java"
+        alias "com.eiffel.PLATFORM.STRING_to_integer"
     end
 end

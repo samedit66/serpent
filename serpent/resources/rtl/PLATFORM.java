@@ -1,7 +1,12 @@
 package com.eiffel;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 /**
@@ -229,9 +234,60 @@ public class PLATFORM {
     }
 
     /* ******************************************************** */
+
+    private static final BufferedReader in =
+        new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+
     /* Методы для класса IO */
     public static void IO_put_string(PLATFORM self, String s) throws UnsupportedEncodingException {
         PrintStream out = new PrintStream(System.out, true, "UTF-8");
         out.print(s);
+    }
+
+    /**
+     * Считывает строку со стандартного ввода и возвращает её.
+     * @param self - ссылка на объект PLATFORM
+     * @return введённая строка
+     * @throws IOException
+     */
+    public static String IO_input_string(PLATFORM self) throws IOException {
+        return in.readLine();
+    }
+
+    public static int IO_input_integer(PLATFORM self) throws IOException {
+        String line = in.readLine();
+        return Integer.parseInt(line.trim());
+    }
+
+    public static double IO_input_real(PLATFORM self) throws IOException {
+        String line = in.readLine();
+        return Double.parseDouble(line.trim());
+    }
+
+    public static String IO_input_character(PLATFORM self) throws IOException {
+        int first = in.read();
+        if (first == -1) {
+            return "";
+        }
+
+        char ch = (char) first;
+        int codepoint;
+        if (Character.isHighSurrogate(ch)) {
+            int second = in.read();
+            if (second != -1) {
+                char ch2 = (char) second;
+                if (Character.isLowSurrogate(ch2)) {
+                    codepoint = Character.toCodePoint(ch, ch2);
+                } else {
+                    codepoint = ch;
+                }
+            } else {
+                codepoint = ch;
+            }
+        } else {
+            codepoint = ch;
+        }
+
+        return new String(Character.toChars(codepoint));
     }
 }
