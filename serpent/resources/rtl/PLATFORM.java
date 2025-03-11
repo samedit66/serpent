@@ -100,7 +100,7 @@ public class PLATFORM {
     }
 
     public static int STRING_count(PLATFORM self) {
-        return self.raw_string.length();
+        return self.raw_string.codePointCount(0, self.raw_string.length());
     }
 
     public static String STRING_to_string(PLATFORM self) {
