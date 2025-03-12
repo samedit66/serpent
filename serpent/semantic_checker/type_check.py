@@ -743,6 +743,13 @@ def annotate_assignment(assignment: Assignment,
         if symtab.has_local(context_method_name, local_name):
             variable_type = symtab.type_of_local(
                 context_method_name, local_name)
+            
+            signature = symtab.get_feature_signature(context_method_name)
+            if any(pname == local_name for (pname, _) in signature):
+                raise CompilerError(
+                    f"Target of assignment '{assignment.target}' is not writable",
+                    location=assignment.location)
+
             left = TVariable(variable_type, local_name)
         else:
             feature_name = mangle_name(

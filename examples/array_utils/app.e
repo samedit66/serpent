@@ -10,24 +10,25 @@ feature
     make
         local
             a: ARRAY [INTEGER]
+            size: INTEGER
+            i: INTEGER
         do
             -- Создаём массив с начальными значениями
-            create a.with_capacity (10, 1)
-            a.put (34, 1)
-            a.put (7, 2)
-            a.put (23, 3)
-            a.put (32, 4)
-            a.put (5, 5)
-            a.put (62, 6)
-            a.put (31, 7)
-            a.put (4, 8)
-            a.put (45, 9)
-            a.put (16, 10)
-            
+            print ("input array size: ")
+            read_integer
+
+            create a.with_capacity (last_integer, 1)
+            from i := 1 until i > a.count loop
+                print ("> ")
+                read_integer
+                a.put (last_integer, i)
+                i := i + 1
+            end
+
             print ("Исходный массив: ")
             print_array (a)
             
-            quick_sort (a, a.lower, a.upper)
+            a.bubble_sort
             
             print ("Отсортированный массив: ")
             print_array (a)

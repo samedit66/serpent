@@ -28,12 +28,14 @@ feature
     end
 
     iter_factorial (n: INTEGER): INTEGER
+    local temp: INTEGER
     do
+        temp := n
         Result := 1
 
-        from until n = 0 loop
-            Result := Result * n
-            n := n - 1
+        from until temp = 0 loop
+            Result := Result * temp
+            temp := temp - 1
         end
     end
 end

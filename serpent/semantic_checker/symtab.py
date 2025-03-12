@@ -305,7 +305,8 @@ def features_of_flatten_class(
             + flatten_cls.redefined
             + flatten_cls.undefined
             + flatten_cls.selected
-            + flatten_cls.inherited)
+            + flatten_cls.inherited
+            )
     ])
 
     return explicit, implicit

@@ -13,3 +13,5 @@ dot-output/
 __coconut_cache__
 .mypy_cache
 serpent.egg-info
+classes/
+eiffel_studio/

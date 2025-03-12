@@ -4,6 +4,8 @@ class
 -- В качестве элемента массива может быть любой тип,
 -- значения которого можно сравнивать.
 
+inherit IO
+
 create
     with_capacity,
     make_filled
@@ -173,6 +175,7 @@ feature
     local
         i, j: INTEGER
     do
+        println ("CALLED FROM ARRAY")
         from
             i := lower
         until
