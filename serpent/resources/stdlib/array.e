@@ -4,7 +4,8 @@ class
 -- В качестве элемента массива может быть любой тип,
 -- значения которого можно сравнивать.
 
-inherit IO
+inherit
+    IO
 
 create
     with_capacity,
@@ -18,9 +19,9 @@ feature
     -- минимальным индексом `low`. По умолчанию всем элементам
     -- устаналивается значение Void.
     do
-        initialize (capacity, Void)
         lower := low
         upper := low + capacity - 1
+        initialize (capacity, Void)
     end
 
     make_filled (fill_value: G; min_index, max_index: INTEGER)
@@ -28,7 +29,7 @@ feature
     -- и заполняет его значением `fill_value`.
     do
         if min_index > max_index then
-            crash_with_message ("min_index cannot be greater than max_index")
+            crash_with_message ("'min_index' cannot be greater than 'max_index'")
         end
 
         lower := min_index
@@ -175,7 +176,6 @@ feature
     local
         i, j: INTEGER
     do
-        println ("CALLED FROM ARRAY")
         from
             i := lower
         until
@@ -210,7 +210,7 @@ feature
     -- Возвращает количество элементов в массиве.
     then upper - lower + 1 end
 
-    empty: BOOLEAN
+    is_empty: BOOLEAN
     -- Проверяет, является ли массив пустым.
     then count = 0 end
 

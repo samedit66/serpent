@@ -354,7 +354,7 @@ def unmangle_name(
 def class_name_of_mangled_name(mangled_name: str) -> str:
     precursor_prefix = "Precursor_"
     if mangled_name.startswith(precursor_prefix):
-        mangled_name = mangled_name[len(precursor_prefix) + 1:]
+        mangled_name = mangled_name[len(precursor_prefix):]
     class_index = mangled_name.index("_")
     return mangled_name[:class_index]
 

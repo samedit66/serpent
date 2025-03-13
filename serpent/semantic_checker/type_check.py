@@ -375,9 +375,11 @@ def annotate_precursor_call(
     # однако на этом этапе копировался и Precusor, что приводило к попытке
     # вызывать прекурсор родителя родителя и так далее. Поэтому мы проверяем,
     # что имя типа symtab совпадает с полученным именем класса из контекста метода,
-    # иначе меняем их таким образом, чтобы ничего не поломалось
+    # иначе меняем их таким образом, чтобы ничего не поломалось.
+    # UPDATE: Если имя метода начинается на "Precursor", это значит, что
+    # не нужно обновлять имена класса и контекста метода, иначе все сломается...
     unmangled_feature_name = unmangle_name(context_method_name)
-    if class_name != symtab.full_type_name:
+    if class_name != symtab.full_type_name and not context_method_name.startswith("Precursor"):
         class_name = symtab.full_type_name
         context_method_name = mangle_name(
             unmangled_feature_name, class_name=class_name)

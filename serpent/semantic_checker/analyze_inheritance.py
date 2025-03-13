@@ -638,13 +638,15 @@ def adapt(class_decl: ClassDecl,
             parent_features,
             own_child_features)
         precursors, redefined, parent_features = redefine(
-            parent, parent_features + parent_table.redefined, own_child_features)
+            parent, parent_features, own_child_features)
+
+        _, parent_redefined, _ = redefine(
+            parent, parent_table.redefined, own_child_features)
+        redefined.extend(parent_redefined)
+        child_table.redefined.extend(redefined)
 
         child_table.precursors.extend(precursors)
         child_table.precursors.extend(parent_table.precursors)
-
-        child_table.redefined.extend(redefined)
-        #child_table.redefined.extend(parent_table.redefined)
 
         # 4.1 этап. Добавляем selected фичи родителей и сохраняем
         # список фич родителя для анализа select дальше
