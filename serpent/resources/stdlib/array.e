@@ -1,5 +1,5 @@
 class
-    ARRAY [G -> COMPARABLE]
+    ARRAY [G -> EQ]
 -- Динамический массив. Обертка над ArrayList в Java.
 -- В качестве элемента массива может быть любой тип,
 -- значения которого можно сравнивать.
@@ -169,32 +169,6 @@ feature
         temp := item (i1)
         put (item (i2), i1)
         put (temp, i2)
-    end
-
-    bubble_sort
-    -- Выполняет сортировку массива методом пузырька.
-    local
-        i, j: INTEGER
-    do
-        from
-            i := lower
-        until
-            i > upper
-        loop
-            from
-                j := i
-            until
-                j > upper
-            loop
-                if item (i) > item (j) then
-                    swap (i, j)
-                end
-
-                j := j + 1
-            end
-
-            i := i + 1
-        end
     end
 
 feature

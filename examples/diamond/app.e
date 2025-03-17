@@ -9,13 +9,23 @@ feature
     make
     local
         arr: ARRAY [BASE]
+        d1: DERIVED1
+        d2: DERIVED2
+        d: DIAMOND
         i: INTEGER
     do
         create arr.with_capacity (4, 1)
+
         arr[1] := create {BASE}.make
-        arr[2] := create {DERIVED1}.make
-        arr[3] := create {DERIVED2}.make
-        arr[4] := create {DIAMOND}.make
+
+        create d1.make
+        arr[2] := d1
+
+        create d2.make
+        arr[3] := d2
+
+        create d.make
+        arr[4] := d
 
         from
             i := arr.lower
@@ -33,7 +43,7 @@ class
 
 inherit
     IO
-    COMPARABLE
+    EQ
 
 create
     make
@@ -46,11 +56,26 @@ feature
     print_origin
         do
             println ("Called from BASE")
+            new_line
         end
 
-    is_less (other: like Current): BOOLEAN then False end
+    non_redefined_anywhere
+        do
+            println ("Is is not redefined anywhere")
+        end
 
-    is_equal (other: like Current): BOOLEAN then False end
+    redefined_by_DERIVED1
+        do
+            println ("Should be redefined by DERIVED1")
+        end
+
+    redefined_by_DERIVED2
+        do
+            println ("Should be redefined by DERIVED2")
+        end
+
+    is_equal (other: like Current): BOOLEAN
+        then True end
 end
 
 class
@@ -58,7 +83,12 @@ class
 
 inherit
     IO
-    BASE redefine make, print_origin end
+    BASE
+    redefine
+        make,
+        print_origin,
+        redefined_by_DERIVED1
+    end
 
 create
     make
@@ -71,6 +101,14 @@ feature
     print_origin
         do
             println ("Called from DERIVED1")
+            println ("Calling precursor of print_origin in DERIVED1")
+            Precursor
+            new_line
+        end
+
+    redefined_by_DERIVED1
+        do
+            println ("Is redefined by DERIVED1")
         end
 end
 
@@ -79,7 +117,12 @@ class
 
 inherit
     IO
-    BASE redefine make, print_origin end
+    BASE
+    redefine
+        make,
+        print_origin,
+        redefined_by_DERIVED2
+    end
 
 create
     make
@@ -92,6 +135,14 @@ feature
     print_origin
     do
         println ("Called from DERIVED2")
+        println ("Calling precursor of print_origin in DERIVED2")
+        Precursor
+        new_line
+    end
+
+    redefined_by_DERIVED2
+    do
+        println ("Is redefined by DERIVED2")
     end
 end
 
@@ -101,9 +152,17 @@ class
 inherit
     IO
     DERIVED1
-        redefine make, print_origin end
+        redefine
+            make,
+            print_origin
+        select redefined_by_DERIVED1
+        end
     DERIVED2
-        redefine make, print_origin end
+        redefine
+            make,
+            print_origin
+        select redefined_by_DERIVED2
+        end
 
 create
     make
@@ -114,8 +173,11 @@ feature
         end
 
     print_origin
-            -- Выводит сообщение с учётом ромбовидной структуры.
         do
             println ("Called from DIAMOND (diamond inheritance)")
+            println ("Calling both variants of print_origin in DIAMOND")
+            {DERIVED1} Precursor
+            {DERIVED2} Precursor
+            new_line
         end
 end
