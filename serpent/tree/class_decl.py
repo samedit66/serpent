@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .abstract_node import *
-from .features import Feature, make_feature_list
+from .features import Feature, Method, make_feature_list
 from .type_decl import ClassType, GenericSpec, make_type_decl
 
 
@@ -88,6 +88,27 @@ def make_class_decl(class_decl_dict: dict) -> ClassDecl:
                 select=SelectedFeatures(
                     class_name="ANY",
                     selected_features=[]))]
+    
+    # Если у класса нет явно указанных конструкторов,
+    # добавляем конструктор по умолчанию
+    if not class_decl.create:
+        class_decl.create = ["default_create"]
+
+        if not any(feature.name == "default_create" for feature in class_decl.features):
+            class_decl.features.append(
+                Method(
+                    location=None,
+                    name="default_create",
+                    clients=["ANY"],
+                    is_deferred=False,
+                    return_type=ClassType(location=None, name="<VOID>"),
+                    do=[],
+                    local_var_decls=[])
+            )
+
+        for parent in class_decl.inherit:
+            if "default_create" not in parent.redefine:
+               parent.redefine.append("default_create")
 
     return class_decl
 
