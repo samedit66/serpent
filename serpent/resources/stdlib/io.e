@@ -2,6 +2,7 @@ class
     IO
 -- Класс для операций ввода/вывода с консолью.
 -- Под капотом использует System.out и System.in.
+-- В стандартной библиотеке Eiffel данный класс называется `STD_INPUT_OUTPUT`.
 
 feature
 -- Операции вывода.
@@ -33,6 +34,44 @@ feature
     end
 
 feature
+-- Операции вывода для сохранения совместимости со стандартной библиотекой Eiffel.
+
+    put_integer (i: INTEGER)
+    -- Печатает целое число в стандартный поток вывода (System.out).
+    do
+        put_string (i.out)
+    end
+
+    put_character (c: CHARACTER)
+    -- Печатает символ в стандартный поток вывода (System.out).
+    do
+        put_string (c.out)
+    end
+
+    put_real (r: REAL)
+    -- Печатает действительное число в стандартный поток вывода (System.out).
+    do
+        put_string (r.out)
+    end
+
+    put_boolean (b: BOOLEAN)
+    -- Печатает булево значение в стандартный поток вывода (System.out).
+    do
+        put_string (b.out)
+    end
+
+    put_spaces (nb: INTEGER)
+    -- Печатает указанное количество пробелов в стандартный поток вывода (System.out).
+    local
+        i: INTEGER
+    do
+        from until i = nb loop
+            put_string (" ")
+            i := i + 1
+        end
+    end
+
+feature
 -- Поля, хранящие значение, считанные с потока ввода.
 
     last_string: STRING
@@ -48,7 +87,7 @@ feature
     -- Последний считанной через `read_character` символ.
 
 feature
--- Операции вывода.
+-- Операции ввода.
 
     read_line
     -- Выполняет считывание строки со стандартного ввода,

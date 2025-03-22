@@ -86,10 +86,17 @@ public class PLATFORM {
         raw_array = array;
     }
 
+    /* ******************************************************** */
+    /* Методы для класса ANY */
+
     public static void ANY_crash_with_message(PLATFORM self, String message) throws UnsupportedEncodingException {
         PrintStream err = new PrintStream(System.err, true, "UTF-8");
         err.println(message);
         System.exit(1);
+    }
+
+    public static int ANY_is_void(PLATFORM self, PLATFORM other) {
+        return other == null ? 1 : 0;
     }
 
     /* ******************************************************** */
