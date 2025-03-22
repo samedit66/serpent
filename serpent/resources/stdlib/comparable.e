@@ -53,7 +53,13 @@ feature
         end
     end
 
-    three_way_comparison (other: like Current): INTEGER
+    in_range (lower, upper: like Current): BOOLEAN
+    -- Находится ли текущий объект в пределах от `lower` до `upper`?
+    then
+        Current >= lower and then Current <= upper
+    end
+
+    compare, three_way_comparison (other: like Current): INTEGER
     -- Если текущий объект равен `other`, возвращается 0.
     -- Если текущий объект меньше `other`, возвращается -1.
     -- Если текущий объект больше `other`, возвращается 1.
