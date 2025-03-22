@@ -3,9 +3,9 @@ class
 -- Целые числа. Обертка для типа int в Java.
 
 inherit
-    NUMERIC
+    NUMERIC redefine is_equal end
     COMPARABLE
-    STRINGABLE
+    STRINGABLE redefine is_equal end
 
 feature
 -- Арифметические действия.

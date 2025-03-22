@@ -518,6 +518,14 @@ def merge(features: list[FeatureRecord],
 
         assert len(effective) > 1
 
+        if all(
+                f.name == "default_create"
+                and isinstance(f.node, Method)
+                and not f.node.do
+                for f in effective):
+            # inherited.append(effective[0])
+            continue
+
         locations_info = ", ".join(str(f.location) for f in features)
         raise CompilerError(
             f"Class '{

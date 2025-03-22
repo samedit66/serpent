@@ -99,6 +99,10 @@ public class PLATFORM {
         return other == null ? 1 : 0;
     }
 
+    public static int ANY_is_same(PLATFORM self, PLATFORM other) {
+        return other == self ? 1 : 0;
+    }
+
     /* ******************************************************** */
     /* Методы для класса STRING */
 

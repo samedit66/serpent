@@ -5,7 +5,10 @@ deferred class
 -- остальные операторы сравнения имеют реализацию по умолчанию.
 
 inherit
-    EQ
+    ANY
+    undefine
+        is_equal
+    end
 
 feature
 -- Операции сравнения.

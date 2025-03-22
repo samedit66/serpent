@@ -4,7 +4,7 @@ class
 
 inherit
     COMPARABLE
-    STRINGABLE
+    STRINGABLE redefine is_equal end
 
 feature
 -- Операции сравнения.
@@ -26,4 +26,5 @@ feature
         external "Java"
         alias "com.eiffel.PLATFORM.BOOLEAN_to_string"
     end
+
 end

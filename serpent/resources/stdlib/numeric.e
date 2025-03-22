@@ -35,4 +35,5 @@ feature
         -- Унарный минус. Псевдоним для "-".
         deferred
     end
+    
 end

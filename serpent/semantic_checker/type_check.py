@@ -400,6 +400,21 @@ def annotate_precursor_call(
         for precursor_name in possible_precursors
         if symtab.has_feature(precursor_name, self_called=True)]
 
+    # UPDATE: в какой-то момент отвалился механизм определения прекурсов,
+    # в условиях использования select, из-за этого пробуем эмпричиеским путем определить
+    # список возможные прекурсоров: все что начинается с Precursor_ и заканчивается на имя фичи
+    if len(precursors) == 0:
+        possible_precursors = [
+            precursor_name
+            for precursor_name in [f for f in symtab.feature_node_map]
+            if precursor_name.startswith("Precursor_") and precursor_name.endswith(unmangled_feature_name)
+        ]
+
+        precursors = [
+            precursor_name
+            for precursor_name in possible_precursors
+            if symtab.has_feature(precursor_name, self_called=True)]
+
     if len(precursors) == 0:
         raise CompilerError(
             f"No Precursor feature available for '{unmangled_feature_name}' -- are you sure you've redefined it?",

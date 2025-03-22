@@ -2,9 +2,9 @@ class REAL
 -- Действительные числа. Обертка для типа float в Java.
 
 inherit
-    NUMERIC
+    NUMERIC redefine is_equal end
     COMPARABLE
-    STRINGABLE
+    STRINGABLE redefine is_equal end
 
 feature
 -- Арифметические действия.

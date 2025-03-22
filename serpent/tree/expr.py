@@ -405,7 +405,9 @@ def make_create_expr(create_expr_dict: dict) -> CreateExpr:
         object_type=make_type_decl(create_expr_dict["object_type"]),
         constructor_call=(
             make_constructor_call(
-                create_expr_dict["constructor_call"]) if create_expr_dict["constructor_call"] else None),
+                create_expr_dict["constructor_call"])
+                if create_expr_dict["constructor_call"]
+                else FeatureCall(location=None, feature_name="default_create", arguments=[])),
     )
 
 

@@ -1,4 +1,5 @@
-deferred class STRINGABLE
+deferred class
+    STRINGABLE
 -- Родитель всех объектов, которы можно представить в виде строки `STRING`.
 -- Чаще всего необходим для операций IO.
 
@@ -8,4 +9,5 @@ feature
     -- Представляет объект в виде строки.
         deferred
     end
+    
 end
