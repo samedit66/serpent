@@ -68,6 +68,14 @@ feature
     index_of (element: like item): INTEGER
     -- Возвращает индекс элемента `element` в массиве.
     -- В случае, если этого элемента нет в массиве, возвращается `upper + 1`.
+    do
+        Result := index_of_from (element, lower)
+    end
+
+    index_of_from (element: like item; from_start: INTEGER): INTEGER
+    -- Возвращает индекс элемента `element` в массиве,
+    -- начиная с индекса `from_start`.
+    -- В случае, если этого элемента нет в массиве, возвращается `upper + 1`.
     local
         i: INTEGER
         found: BOOLEAN
@@ -75,7 +83,7 @@ feature
         Result := upper + 1
 
         from
-            i := lower
+            i := from_start
         until
             i > upper or found
         loop
@@ -90,7 +98,9 @@ feature
 
     has (element: like item): BOOLEAN
     -- Проверяет, есть ли элемент `element` в массиве.
-    then index_of (element) /= upper + 1 end
+    then
+        index_of (element) /= upper + 1
+    end
 
     count_of, occurrences (element: like item): INTEGER
     -- Считает, сколько раз заданный элемент встречается в массиве.
