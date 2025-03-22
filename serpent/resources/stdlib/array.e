@@ -8,11 +8,25 @@ inherit
     IO
 
 create
+    make,
     with_capacity,
     make_filled
 
 feature
 -- Конструкторы массива.
+
+    make (min_index, max_index: INTEGER)
+    -- Создает массив с заданным промежутком индексов [`min_index`..` max_index`].
+    -- По умолчанию всем элементам устанавливается значение Void.
+    do
+        if min_index > max_index then
+            crash_with_message ("'lower' cannot be greater than 'max_index'")
+        end
+
+        lower := min_index
+        upper := max_index
+        initialize (count, Void)
+    end
 
     with_capacity (capacity, low: INTEGER)
     -- Создает массив с заданным размером `capacity` и
