@@ -235,7 +235,19 @@ public class PLATFORM {
     }
 
     public static String REAL_to_string(PLATFORM self) {
-        return Float.toString(self.raw_float);
+        String s = Float.toString(self.raw_float);
+
+        // Убираем незначащие нули после запятой
+        int index = s.length() - 1;
+        while (index > 0 && s.charAt(index) == '0') {
+            index--;
+        }
+        
+        if (s.charAt(index) == '.') {
+            index--;
+        }
+
+        return s.substring(0, index + 1);
     }
 
     /* ******************************************************** */
