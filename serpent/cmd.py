@@ -18,17 +18,15 @@ def init_project(name: str, error_collector: ErrorCollector) -> None:
     app_dir.mkdir(parents=True)
     try:
         with open(app_file, "w") as f:
-            f.write("""class
+            f.write(
+"""class
     APPLICATION
-                    
-inherit
-    IO
-                                 
+                            
 feature
                     
     make
     do
-        println ("Hello, world!")
+        print ("Hello, world!%N")
     end
 end
 """)
