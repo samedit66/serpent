@@ -42,6 +42,9 @@ cd app
 class
     APPLICATION
 
+create
+    make
+
 feature
 
     make

@@ -21,7 +21,10 @@ def init_project(name: str, error_collector: ErrorCollector) -> None:
             f.write(
 """class
     APPLICATION
-                            
+
+create
+    make
+    
 feature
                     
     make
