@@ -19,9 +19,7 @@ feature
     -- Создает массив с заданным промежутком индексов [`min_index`..` max_index`].
     -- По умолчанию всем элементам устанавливается значение Void.
     do
-        if min_index > max_index then
-            crash_with_message ("'lower' cannot be greater than 'max_index'")
-        end
+        require_that (min_index > max_index, "'lower' cannot be greater than 'max_index'")
 
         lower := min_index
         upper := max_index
@@ -42,9 +40,7 @@ feature
     -- Создает массив с заданным промежутком индексов [`min_index`..`max_index`]
     -- и заполняет его значением `fill_value`.
     do
-        if min_index > max_index then
-            crash_with_message ("'min_index' cannot be greater than 'max_index'")
-        end
+        require_that (min_index > max_index, "'lower' cannot be greater than 'max_index'")
 
         lower := min_index
         upper := max_index
@@ -57,7 +53,7 @@ feature
     at, item (index: INTEGER): G
     -- Возвращает элемент под индексом index.
     do
-        check_index (index)
+        require_that (valid_index (index), index.to_string + " not a valid index")
 
         Result := item_raw (map_index (index))
     end
@@ -165,7 +161,7 @@ feature
     remove (index: INTEGER)
     -- Удаляет элемент из массива по индексу `index`.
     do
-        check_index (index)
+        require_that (valid_index (index), index.to_string + " not a valid index")
 
         remove_raw (map_index (index))
         upper := upper - 1
@@ -177,7 +173,7 @@ feature
     put (element: like item; index: INTEGER)
     -- Помещает в массив элемент element по индексу index.
     do
-        check_index (index)
+        require_that (valid_index (index), index.to_string + " not a valid index")
 
         put_raw (element, map_index (index))
     end
@@ -187,8 +183,8 @@ feature
     local
         temp: G
     do
-        check_index (i1)
-        check_index (i2)
+        require_that (valid_index (i1), "'i1' (" + i1.to_string + ") is not a valid index")
+        require_that (valid_index (i2), "'i2' (" + i2.to_string + ") is not a valid index")
 
         temp := item (i1)
         put (item (i2), i1)
@@ -280,15 +276,6 @@ feature {NONE}
     -- Преобразует индекс массива из промежутка [lower..upper]
     -- в "настоящий" индекс из промежутка [0..upper-lower]
     then index - lower end
-
-    check_index (index: INTEGER)
-    -- Проверяет, является ли индекс `index` допустимым,
-    -- если нет прекращает выполнение программы с выводом диагностического сообщения.
-    do
-        if not valid_index (index) then
-            crash_with_message (index.to_string + " not a valid index")
-        end
-    end
 
 feature {NONE}
 -- Низкоуровневые функции взаимодействия с массивом.
