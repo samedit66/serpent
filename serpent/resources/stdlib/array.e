@@ -4,9 +4,6 @@ class
 -- В качестве элемента массива может быть любой тип,
 -- значения которого можно сравнивать.
 
-inherit
-    IO
-
 create
     make,
     with_capacity,
@@ -19,11 +16,9 @@ feature
     -- Создает массив с заданным промежутком индексов [`min_index`..` max_index`].
     -- По умолчанию всем элементам устанавливается значение Void.
     do
-        require_that (min_index > max_index, "'lower' cannot be greater than 'max_index'")
+        require_that (min_index > max_index, "'min_index' cannot be greater than 'max_index'")
 
-        lower := min_index
-        upper := max_index
-        initialize (count, Void)
+        make_filled (Void, min_index, max_index)
     end
 
     with_capacity (capacity, low: INTEGER)
@@ -31,6 +26,11 @@ feature
     -- минимальным индексом `low`. По умолчанию всем элементам
     -- устаналивается значение Void.
     do
+        require_that (capacity > 0, "'capacity' cannot be negative")
+
+        -- Код ниже нельзя заменить на вызов make_filled,
+        -- т.к. если capacity = 0, то upper < lower, 
+        -- нарушается предусловие для make_filled.
         lower := low
         upper := low + capacity - 1
         initialize (capacity, Void)
@@ -40,7 +40,7 @@ feature
     -- Создает массив с заданным промежутком индексов [`min_index`..`max_index`]
     -- и заполняет его значением `fill_value`.
     do
-        require_that (min_index > max_index, "'lower' cannot be greater than 'max_index'")
+        require_that (min_index > max_index, "'min_index' cannot be greater than 'max_index'")
 
         lower := min_index
         upper := max_index
@@ -223,10 +223,10 @@ feature
         end
     end
 
-    element: G
+    thing: G
     -- Текущий элемент итератора.
     do
-        require_that (iterating, "You're not iterating over ARRAY, 'element' cannot be called")
+        require_that (iterating, "You're not iterating over ARRAY, 'thing' cannot be called")
         require_that (not off, "This iterator is exhausted, try making a new one using 'start'")
 
         Result := item (current_index)
