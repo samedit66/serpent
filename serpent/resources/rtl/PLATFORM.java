@@ -95,6 +95,11 @@ public class PLATFORM {
         System.exit(1);
     }
 
+    public static void ANY_require_that(PLATFORM self, int condition, String message) throws PreconditionFailedException {
+        if (condition != 1)
+            throw new PreconditionFailedException(message);
+    }
+
     public static int ANY_is_void(PLATFORM self, PLATFORM other) {
         return other == null ? 1 : 0;
     }

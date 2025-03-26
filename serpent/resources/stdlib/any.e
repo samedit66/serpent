@@ -90,13 +90,20 @@ feature
     end
 
 feature
--- Функции для работы со стандартным потоком ошибок.
+-- Функции для работы с ошибочными ситуациями.
 
     crash_with_message (message: STRING)
     -- Печатает сообщение об ошибке в System.err, после чего
     -- завершает работу приложения с кодом 1.
         external "Java"
         alias "com.eiffel.PLATFORM.ANY_crash_with_message"
+    end
+
+    assert, require_that (condition: BOOLEAN; message: STRING)
+    -- Проверяют истинность условия `condition`. Если оно ложно,
+    -- выбрасывается исключение PreconditionFailedException c заданным сообщением `message`.
+        external "Java"
+        alias "com.eiffel.PLATFORM.ANY_require_that"
     end
 
 end
