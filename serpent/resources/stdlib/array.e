@@ -196,6 +196,60 @@ feature
     end
 
 feature
+-- Итерирование по массиву.
+
+    start
+    -- Начинает процесс итерации по массиву.
+    do
+        iterating := True
+        is_exhausted := False
+        current_index := lower
+    end
+
+    off, exhausted: BOOLEAN
+    -- Есть ли еще элементы для итерации?
+    do
+        Result := is_exhausted
+    end
+
+    forth
+    -- Двигает указатель итератора вперед.
+    do
+        require_that (iterating, "You're not iterating over ARRAY, 'forth' cannot be called")
+        require_that (not off, "This iterator is exhausted, try making a new one using 'start'")
+
+        current_index := current_index + 1
+
+        if current_index > upper then
+            iterating := False
+            is_exhausted := True
+            current_index := lower
+        end
+    end
+
+    element: G
+    -- Текущий элемент итератора.
+    do
+        require_that (iterating, "You're not iterating over ARRAY, 'element' cannot be called")
+        require_that (not off, "This iterator is exhausted, try making a new one using 'start'")
+
+        Result := item (current_index)
+    end
+
+feature {NONE}
+-- Фичи, необходимые для реализации "встроенного" итератора.
+
+    iterating: BOOLEAN
+    -- Флаг, указывающий, что по массиву происходит итерация.
+    -- Необходим для итерирующих фич.
+
+    is_exhausted: BOOLEAN
+    -- Флаг, показывающий, что в итераторе больше нет элементов.
+
+    current_index: INTEGER
+    -- Текущий индекс итерации.
+
+feature
 -- Характеристики массива.
 
     lower: INTEGER
