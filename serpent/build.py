@@ -114,7 +114,8 @@ def build_class_files(
         build_dir: str,
         main_class_name: str,
         main_routine_name: str,
-        eiffel_package: str) -> None:
+        eiffel_package: str,
+        verbose: bool) -> None:
     """
     Автоматизирует процесс сборки проекта:
       - Парсит и компилирует исходные файлы Eiffel, генерируя .class файлы,
@@ -128,6 +129,7 @@ def build_class_files(
       parser_path: Путь к исполняемому файлу парсера Eiffel.
       build_dir: Каталог для размещения скомпилированных файлов.
       java_version: Версия Java для компиляции (по умолчанию 9).
+      verbose: Показывать ли прогресс-бар компиляции классов?
     """
     # Создаем каталог сборки, если его нет.
     build_dir = Path(build_dir)
@@ -174,7 +176,8 @@ def build_class_files(
         main_class_name=main_class_name,
         main_routine_name=main_routine_name,
         minor_version=minor,
-        major_version=major)
+        major_version=major,
+        verbose=verbose)
     if not error_collector.ok():
         return
 
@@ -198,7 +201,8 @@ def compile_eiffel_classes(
         main_class_name: str,
         main_routine_name: str,
         minor_version: int,
-        major_version: int) -> None:
+        major_version: int,
+        verbose: bool = False) -> None:
     main_class = next(
         (cls for cls in classes if cls.class_name == main_class_name), None)
     if main_class is None:
@@ -221,7 +225,14 @@ def compile_eiffel_classes(
     all_classes = [general_class] + classes
 
     build_dir = Path(build_dir)
-    for current in all_classes:
+
+    if verbose and is_tqdm_installed():
+        from tqdm import tqdm
+        progress_bar = tqdm(all_classes, desc="Compiling classes")
+    else:
+        progress_bar = all_classes
+
+    for current in progress_bar:
         rest = [cls for cls in all_classes if cls.class_name != current.class_name]
         entry_method_name = main_routine if current.class_name == main_class_name else None
 
@@ -247,6 +258,14 @@ def compile_eiffel_classes(
                 CompilerError(f"Error writing file {class_filename}: {e}", source="serpent")
             )
             return
+
+
+def is_tqdm_installed() -> bool:
+    try:
+        import tqdm
+        return True
+    except ImportError:
+        return False
 
 
 def compile_java_files(

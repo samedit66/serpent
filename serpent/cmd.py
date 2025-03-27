@@ -42,7 +42,6 @@ end
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="serpent", description="Serpent Eiffel Compiler CLI")
-
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # `init` command
@@ -55,7 +54,8 @@ def main() -> None:
     build_parser.add_argument("-m", "--mainclass", default="APPLICATION", help="Main class (default: APPLICATION).")
     build_parser.add_argument("-r", "--mainroutine", default="make", help="Main method (default: make).")
     build_parser.add_argument("-j", "--javaversion", type=int, default=8, help="Java version (default: 8).")
-    build_parser.add_argument("-d", "--outputdir", default="classes", help="Build folder (default: class).")
+    build_parser.add_argument("-d", "--outputdir", default="classes", help="Build folder (default: classes).")
+    build_parser.add_argument("-v", "--verbose", action="store_true", help="Show a progress bar of class compiling.")
 
     # `run` command
     run_parser = subparsers.add_parser("run", help="Run compiled class files.")
@@ -68,7 +68,8 @@ def main() -> None:
     exec_parser.add_argument("-m", "--mainclass", default="APPLICATION", help="Main class (default: APPLICATION).")
     exec_parser.add_argument("-r", "--mainroutine", default="make", help="Main method (default: make).")
     exec_parser.add_argument("-j", "--javaversion", type=int, default=8, help="Java version (default: 8).")
-    exec_parser.add_argument("-d", "--outputdir", default="classes", help="Build folder (default: class).")
+    exec_parser.add_argument("-d", "--outputdir", default="classes", help="Build folder (default: classes).")
+    exec_parser.add_argument("-v", "--verbose", action="store_true", help="Show a progress bar of class compiling.")
 
     # `jar` command
     jar_parser = subparsers.add_parser("jar", help="Create a JAR file.")
@@ -97,6 +98,7 @@ def main() -> None:
             main_class_name=args.mainclass,
             main_routine_name=args.mainroutine,
             eiffel_package="com.eiffel",
+            verbose=args.verbose,
         )
     elif args.command == "run":
         run(
@@ -116,6 +118,7 @@ def main() -> None:
             main_class_name=args.mainclass,
             main_routine_name=args.mainroutine,
             eiffel_package="com.eiffel",
+            verbose=args.verbose,
         )
         run(
             args.outputdir,
