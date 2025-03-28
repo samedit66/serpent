@@ -3,11 +3,13 @@ from setuptools.command.build_py import build_py as _build_py
 from setuptools import setup, find_packages
 import subprocess
 
+
 class build_py(_build_py):
     def run(self):
         current_dir = os.path.abspath(os.path.dirname(__file__))
         subprocess.run(["make"], cwd=current_dir, check=True)
         super().run()
+
 
 setup(
     name="serpent",
