@@ -26,6 +26,8 @@
 
 Далее необходимо установить serpent через pip как пакет Python:
 ```bash
+git clone https://github.com/samedit66/serpent.git
+cd serpent
 pip install .
 ```
 
