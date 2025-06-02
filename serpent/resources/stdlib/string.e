@@ -25,6 +25,15 @@ feature
     end
 
 feature
+-- Доступ к символам.
+
+    at, item (index: INTEGER): CHARACTER
+    -- Возвращает символ под индексом index.
+        external "Java"
+        alias "com.eiffel.PLATFORM.STRING_item"
+    end
+
+feature
 -- Операции сравнения.
 
     is_less (other: like Current): BOOLEAN

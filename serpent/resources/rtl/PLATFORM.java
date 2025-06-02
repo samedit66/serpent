@@ -153,6 +153,21 @@ public class PLATFORM {
         return three_way_comparison(self.raw_string, other) == 0 ? 1 : 0;
     }
 
+    public static String STRING_item(PLATFORM self, int index) {
+        if (index < 0 || index >= self.raw_string.codePointCount(0, self.raw_string.length())) {
+            throw new IndexOutOfBoundsException("Index " + index + " out of bounds");
+        }
+
+        int offset = 0;
+        int currentIndex = 0;
+        while (currentIndex < index) {
+            offset += Character.charCount(self.raw_string.codePointAt(offset));
+            currentIndex++;
+        }
+        int codePoint = self.raw_string.codePointAt(offset);
+        return new String(Character.toChars(codePoint));
+    }
+
     /* ******************************************************** */
     /* Методы для класса INTEGER */
 
