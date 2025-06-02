@@ -153,7 +153,9 @@ public class PLATFORM {
         return three_way_comparison(self.raw_string, other) == 0 ? 1 : 0;
     }
 
-    public static String STRING_item(PLATFORM self, int index) {
+    public static String STRING_raw_item(PLATFORM self, int index) {
+        index -= 1;
+
         if (index < 0 || index >= self.raw_string.codePointCount(0, self.raw_string.length())) {
             throw new IndexOutOfBoundsException("Index " + index + " out of bounds");
         }
@@ -164,6 +166,7 @@ public class PLATFORM {
             offset += Character.charCount(self.raw_string.codePointAt(offset));
             currentIndex++;
         }
+
         int codePoint = self.raw_string.codePointAt(offset);
         return new String(Character.toChars(codePoint));
     }
@@ -217,6 +220,10 @@ public class PLATFORM {
 
     public static String INTEGER_to_string(PLATFORM self) {
         return Integer.toString(self.raw_int);
+    }
+
+    public static String INTEGER_to_character(PLATFORM self) {
+        return Character.toString(self.raw_int);
     }
 
     /* ******************************************************** */

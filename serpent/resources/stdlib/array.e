@@ -40,7 +40,7 @@ feature
     -- Создает массив с заданным промежутком индексов [`min_index`..`max_index`]
     -- и заполняет его значением `fill_value`.
     do
-        require_that (min_index > max_index, "'min_index' cannot be greater than 'max_index'")
+        require_that (min_index <= max_index, "'min_index' cannot be greater than 'max_index'")
 
         lower := min_index
         upper := max_index

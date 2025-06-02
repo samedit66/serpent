@@ -496,6 +496,7 @@ def make_class_symtab(
             possible_feature_name = mangle_name(
                 param.name, class_name=actuals.name)
             if possible_feature_name in feature_node_map:
+                var_decl = feature_node_map[possible_feature_name]
                 raise CompilerError(
                     f"Parameter '{
                         var_decl.name}' conflits with feature '{

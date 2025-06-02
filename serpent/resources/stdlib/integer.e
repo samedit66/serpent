@@ -82,4 +82,11 @@ feature
         external "Java"
         alias "com.eiffel.PLATFORM.INTEGER_to_string"
     end
+
+    to_character: CHARACTER
+    -- Конвертирует в символ.
+        external "Java"
+        alias "com.eiffel.PLATFORM.INTEGER_to_character"
+    end
+
 end

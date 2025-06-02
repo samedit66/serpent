@@ -30,7 +30,7 @@ feature
     at, item (index: INTEGER): CHARACTER
     -- Возвращает символ под индексом index.
         external "Java"
-        alias "com.eiffel.PLATFORM.STRING_item"
+        alias "com.eiffel.PLATFORM.STRING_raw_item"
     end
 
 feature
@@ -63,4 +63,5 @@ feature
         external "Java"
         alias "com.eiffel.PLATFORM.STRING_to_integer"
     end
+    
 end
