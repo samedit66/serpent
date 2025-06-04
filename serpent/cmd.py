@@ -1,5 +1,7 @@
 import argparse
 from pathlib import Path
+import sys
+
 from serpent.errors import ErrorCollector, CompilerError
 from serpent.build import build_class_files, run, make_jar
 from serpent.resources import get_resource_path
@@ -120,6 +122,10 @@ def main() -> None:
             eiffel_package="com.eiffel",
             verbose=args.verbose,
         )
+        if not error_collector.ok():
+            error_collector.show()
+            sys.exit(1)
+
         run(
             args.outputdir,
             error_collector,
