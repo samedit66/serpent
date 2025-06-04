@@ -227,7 +227,7 @@ def annotate_feature_call(
 
         callee_symtab = symtab
 
-    feature_name = mangle_name(name, class_name=callee_symtab.full_type_name)
+    feature_name = mangle_name(name, class_name=callee_symtab.short_type_name)
     if not callee_symtab.has_feature(
             feature_name,
             self_called=typed_owner is None):
@@ -504,10 +504,10 @@ def annotate_create_expr(
         raise CompilerError("Concrete class types are only supported",
                             location=create_expr.location)
 
-    expr_type = type_of_class_decl_type(object_type)
+    expr_type = type_of_class_decl_type(object_type, {})
     if expr_type.name not in hierarchy:
         raise CompilerError(f"Unknown type '{expr_type.name}'",
-                            location=create_expr.location)
+                                location=create_expr.location)
 
     if not global_class_table.has_class_table(expr_type.full_name):
         flatten_cls = flatten_class_mapping[expr_type.name]
@@ -530,7 +530,7 @@ def annotate_create_expr(
             location=create_expr.location)
 
     constructor_name_mangled = mangle_name(
-        constructor_name, class_name=create_object_symtab.type_of.full_name)
+        constructor_name, class_name=create_object_symtab.type_of.name)
     if not create_object_symtab.has_feature(constructor_name_mangled):
         raise CompilerError(
             f"No constructor feature '{constructor_name}' found",
@@ -771,7 +771,7 @@ def annotate_assignment(assignment: Assignment,
         else:
             feature_name = mangle_name(
                 assignment.target,
-                class_name=symtab.full_type_name)
+                class_name=symtab.short_type_name)
             if not symtab.has_feature(feature_name):
                 raise CompilerError(
                     f"Unknown feature or variable '{assignment.target}'",
@@ -809,7 +809,7 @@ def annotate_assignment(assignment: Assignment,
     if right.expr_type.full_name == "INTEGER" and left.expr_type.full_name == "REAL":
         right = TFeatureCall(
             expr_type=Type("REAL"),
-            feature_name=mangle_name("to_real", class_name=right.expr_type.full_name),
+            feature_name=mangle_name("to_real", class_name=right.expr_type.name),
             arguments=[],
             owner=right)
 
@@ -839,7 +839,7 @@ def annotate_create_stmt(create_stmt: CreateStmt,
         else:
             feature_name = mangle_name(
                 constructor_call.object_name,
-                class_name=symtab.full_type_name)
+                class_name=symtab.short_type_name)
             create_object_type = symtab.type_of_feature(
                 feature_name, self_called=True) # Почему True? Не знаю, на всякий случай...
             
@@ -868,13 +868,13 @@ def annotate_create_stmt(create_stmt: CreateStmt,
             constructor_name = constructor_call.constructor_name
 
         mangled_constructor_name = mangle_name(
-            constructor_name, class_name=create_object_type.full_name)
+            constructor_name, class_name=create_object_type.name)
         if not create_object_symtab.has_feature(mangled_constructor_name):
             raise CompilerError(
                 f"Unknown constructor feature '{constructor_name}'",
                 location=create_stmt.location)
     else:
-        create_object_type = type_of_class_decl_type(create_stmt.object_type)
+        create_object_type = type_of_class_decl_type(create_stmt.object_type, {})
 
     # Здесь нет проверки на то, существует ли object_type
     # реально в иерархии классов, т.к. данная проверка и
@@ -1143,7 +1143,7 @@ def make_codegen_class(flatten_cls: FlattenClass,
     if not global_class_table.has_class_table(flatten_cls.class_name):
         actual_type = actual_type or ClassType(
             location=None, name=flatten_cls.class_name)
-        class_type = type_of_class_decl_type(actual_type)
+        class_type = type_of_class_decl_type(actual_type, {})
 
         if not global_class_table.has_class_table(class_type.full_name):
             symtab = make_class_symtab(

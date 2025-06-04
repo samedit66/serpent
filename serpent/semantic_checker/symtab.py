@@ -97,7 +97,7 @@ class Type:
 GLOBAL_GENERIC_TABLE: dict[str, list[Type]] = defaultdict(list)
 
 
-def type_of_class_decl_type(type_decl: ClassType) -> Type:
+def type_of_class_decl_type(type_decl: ClassType, generic_map: dict[str, Type]) -> Type:
     generics = []
     for generic_decl in type_decl.generics:
         if not isinstance(generic_decl, ClassType):
@@ -105,7 +105,10 @@ def type_of_class_decl_type(type_decl: ClassType) -> Type:
                 "Generic type declarations must be concrete types, not generics",
                 generic_decl.location)
 
-        generics.append(type_of_class_decl_type(generic_decl))
+        if generic_decl.name in generic_map:
+            generics.append(generic_map[generic_decl.name])
+        else:
+            generics.append(type_of_class_decl_type(generic_decl, generic_map))
 
     typ = Type(name=type_decl.name, generics=generics)
     if typ.full_name != typ.name:
@@ -269,7 +272,7 @@ def make_generic_map(
         for generic_spec in generics]
 
     actuals = [
-        type_of_class_decl_type(actual)
+        type_of_class_decl_type(actual, {})
         for actual in actuals]
 
     generic_map = {
@@ -282,18 +285,18 @@ def make_generic_map(
 def features_of_flatten_class(
         flatten_cls: FlattenClass,
         actual_type: ClassType) -> tuple[list[FeatureRecord], list[FeatureRecord]]:
-    typ = type_of_class_decl_type(actual_type)
+    typ = type_of_class_decl_type(actual_type, {})
 
     precursors = [
         copy.replace(f, name=f"Precursor_{f.from_class}_{f.name}")
         for f in flatten_cls.precursors
     ]
     inherited = [
-        copy.replace(f, name=f"{typ.full_name}_{f.name}")
+        copy.replace(f, name=f"{typ.name}_{f.name}")
         for f in flatten_cls.inherited
     ]
     own = [
-        copy.replace(f, name=f"{typ.full_name}_{f.name}")
+        copy.replace(f, name=f"{typ.name}_{f.name}")
         for f in flatten_cls.own + flatten_cls.constructors
     ]
 
@@ -313,8 +316,8 @@ def features_of_flatten_class(
 
 
 def constructors_of(flatten_cls: FlattenClass, actual_type: ClassType) -> list[str]:
-    typ = type_of_class_decl_type(actual_type)
-    return [f"{typ.full_name}_{f.name}" for f in flatten_cls.constructors]
+    typ = type_of_class_decl_type(actual_type, {})
+    return [f"{typ.name}_{f.name}" for f in flatten_cls.constructors]
 
 
 def check_clients_existence(
@@ -374,12 +377,12 @@ def guess_type(
                 raise CompilerError(
                     f"Unknown type '{name}'",
                     location=location)
-            return type_of_class_decl_type(type_decl)
+            return type_of_class_decl_type(type_decl, generic_map)
         case LikeCurrent(location=location):
             return class_type
         case LikeFeature(location=location, feature_name=feature_name):
             mangled_name = mangle_name(
-                feature_name, class_name=class_type.full_name)
+                feature_name, class_name=class_type.name)
             if mangled_name not in feature_value_type_map:
                 raise CompilerError(
                     f"Unknown feature '{feature_name}'", location=type_decl.location)
@@ -412,7 +415,7 @@ def make_class_symtab(
     feature_clients_map = {}
     feature_value_type_map = {}
     feature_node_map = {}
-    class_type = type_of_class_decl_type(actuals)
+    class_type = type_of_class_decl_type(actuals, generic_map)
 
     like_anchored = []
     for feature in explicit + implicit:
@@ -431,13 +434,13 @@ def make_class_symtab(
                 type_of = generic_map[type_decl.name]
                 feature_value_type_map[feature.name] = type_of
             elif type_decl.name in hierarchy:
-                type_of = type_of_class_decl_type(type_decl)
+                type_of = type_of_class_decl_type(type_decl, generic_map)
                 feature_value_type_map[feature.name] = type_of
             else:
                 raise CompilerError(f"Unknown type '{type_decl.name}'",
                                     location=type_decl.location)
         elif isinstance(type_decl, LikeCurrent):
-            type_of = type_of_class_decl_type(actuals)
+            type_of = type_of_class_decl_type(actuals, generic_map)
             feature_value_type_map[feature.name] = type_of
         elif isinstance(type_decl, LikeFeature):
             like_anchored.append(
