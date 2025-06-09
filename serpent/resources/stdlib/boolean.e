@@ -3,8 +3,8 @@ class
 -- Булевский тип данных. Фактически является оберткой над int в Java.
 
 inherit
-    COMPARABLE
-    STRINGABLE redefine is_equal end
+    ANY redefine out, is_equal end
+    COMPARABLE redefine out end
 
 feature
 -- Операции сравнения.
@@ -22,7 +22,7 @@ feature
 feature
 -- Конвертация в другие типы.
 
-    out, to_string: STRING
+    out: STRING
         external "Java"
         alias "com.eiffel.PLATFORM.BOOLEAN_to_string"
     end

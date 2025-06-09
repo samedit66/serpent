@@ -90,6 +90,15 @@ feature
     end
 
 feature
+
+    out: STRING
+    -- Представление объекта в виде строки.
+    -- По умолчанию вызывает toString определенный у Object.
+        external "Java"
+        alias "com.eiffel.PLATFORM.ANY_out"
+    end
+
+feature
 -- Функции для работы с ошибочными ситуациями.
 
     crash_with_message (message: STRING)

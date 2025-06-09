@@ -108,6 +108,10 @@ public class PLATFORM {
         return other == self ? 1 : 0;
     }
 
+    public static String ANY_out(PLATFORM self) {
+        return self.toString();
+    }
+
     /* ******************************************************** */
     /* Методы для класса STRING */
 

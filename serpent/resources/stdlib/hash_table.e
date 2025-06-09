@@ -17,15 +17,25 @@ feature {NONE}
     occupied: ARRAY [BOOLEAN]
     -- Какие ячейки являются занятыми.
 
+    Default_capacity: INTEGER = 17
+    -- Размер хэш-таблицы по умолчанию.
+
 feature
 
-    make (size: INTEGER)
+    make (a_capacity: INTEGER)
     -- Создает хэш-таблицу с заданным размером.
     -- @param size Начальный размер хэш-таблицы.
     do
-        create keys.with_capacity (size, 1)
-        create values.with_capacity (size, 1)
+        capacity := a_capacity
+        create keys.with_capacity (capacity, 1)
+        create values.with_capacity (capacity, 1)
         create occupied.make_filled (False, keys.lower, keys.upper)
+    end
+
+    empty
+    -- Создает "пустую" хэш-таблицу.
+    do
+        make (Default_capacity)
     end
 
 feature
@@ -46,21 +56,83 @@ feature
         end
     end
 
+    capacity: INTEGER
+    -- Сколько всего может быть элементов в хэш-таблице.
+
+    is_full: BOOLEAN
+    -- Заполнена ли хэш-таблица полностью?
+    then
+        count = occupied.count
+    end
+
+    is_empty: BOOLEAN
+    -- Пустая ли хэш-таблица?
+    then
+        count = 0
+    end
+
 feature
 
     at, item (k: K): V
     -- Получить элемент по ключу `k`.
     -- @param k Ключ.
     -- @return Значение по ключу.
+    local
+        i: INTEGER
     do
-    
+        i := index_of (k)
+        require_that (i /= 0, "Key " + k.out + "is not present in the hash table")
+        Result := values [i]
     end
 
 feature
 
     put (v: like item; k: K)
+    local
+        i: INTEGER
     do
+        if is_full then rehash end
 
+        i := internal_index (k)
+        from until not occupied [i]
+        loop i := i + 1 end
+
+        keys [i] := k
+        values [i] := v
+        occupied [i] := True
+    end
+
+feature {NONE}
+
+    rehash
+    -- Выполняет "рехэш" хэш-таблицы:
+    -- увеличивает емкость в 1.5 раза и копирует все элементы
+    -- в новую область памяти.
+    local
+        l_capacity: INTEGER
+        l_keys: ARRAY [K]
+        l_values: ARRAY [V]
+        i: INTEGER
+    do
+        l_capacity := (capacity * 15 // 10)
+        create l_keys.with_capacity (l_capacity, 1)
+        create l_values.with_capacity (l_capacity, 1)
+        create l_occupied.make_filled (False, keys.lower, keys.upper)
+
+        from
+            i := keys.lower
+        until
+            i = keys.upper
+        loop
+            l_keys [i] := keys [i]
+            l_values [i] := values [i]
+            l_occupied [i] := occupied [i]
+        end
+
+        capacity := l_capacity
+        keys := l_keys
+        values := l_values
+        occupied := l_occupied
     end
 
 feature
@@ -88,20 +160,20 @@ feature {NONE}
 
     index_of (k: like item): INTEGER
     local
-        i: INTEGER
         seen_elements_count: INTEGER
     do
         seen_elements_count := 1
-        Result := 0
 
         from
-            i := internal_index (k)
+            Result := internal_index (k)
         until
             (seen_elements_count = count) or else (keys [i] = k)
         loop
-            i := i + 1
+            Result := Result + 1
             seen_elements_count := seen_elements_count + 1
         end
+
+        if Result > keys.upper then Result := 0 end
     end
 
     internal_index (k: like item): INTEGER

@@ -2,9 +2,9 @@ class REAL
 -- Действительные числа. Обертка для типа float в Java.
 
 inherit
-    NUMERIC redefine is_equal end
-    COMPARABLE
-    STRINGABLE redefine is_equal end
+    ANY redefine out, is_equal end
+    COMPARABLE redefine out end
+    NUMERIC redefine out, is_equal end
 
 feature
 -- Арифметические действия.
@@ -55,7 +55,7 @@ feature
 feature
 -- Конвертация в другие типы.
 
-    out, to_string: STRING
+    out: STRING
     -- Конвертирует в строку.
         external "Java"
         alias "com.eiffel.PLATFORM.REAL_to_string"

@@ -3,9 +3,9 @@ class
 -- Целые числа. Обертка для типа int в Java.
 
 inherit
-    NUMERIC redefine is_equal end
-    COMPARABLE
-    STRINGABLE redefine is_equal end
+    ANY redefine out, is_equal end
+    COMPARABLE redefine out end
+    NUMERIC redefine out, is_equal end
 
 feature
 -- Арифметические действия.
@@ -77,7 +77,7 @@ feature
         alias "com.eiffel.PLATFORM.INTEGER_to_real"
     end
 
-    out, to_string: STRING
+    out: STRING
     -- Конвертирует в строку.
         external "Java"
         alias "com.eiffel.PLATFORM.INTEGER_to_string"

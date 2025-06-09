@@ -13,11 +13,11 @@ feature
         put_string ("%N")
     end
 
-    println (something: STRINGABLE)
+    println (a: ANY)
     -- Печатает на экран что-то, что может быть представлено в виде строке.
     -- Дополнительно печатает символ перевода строки на экран.
     do
-        put_string (something.out)
+        put_string (a.out)
         new_line
     end
 

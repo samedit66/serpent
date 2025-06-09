@@ -5,8 +5,8 @@ class
 -- 1 до 4-х байтов.
 
 inherit
-    COMPARABLE
-    STRINGABLE
+    ANY redefine out, is_equal end
+    COMPARABLE redefine out end
 
 feature
 -- Операции сравнения.
@@ -33,7 +33,7 @@ feature
 feature
 -- Конвертация в другие типы.
 
-    out, to_string: STRING
+    out: STRING
         external "Java"
         alias "com.eiffel.PLATFORM.CHARACTER_to_string"
     end

@@ -3,8 +3,8 @@ class
 -- Класс для представления строк. Обертка над типом String в Java.
 
 inherit
-    COMPARABLE
-    STRINGABLE
+    ANY redefine out, is_equal end
+    COMPARABLE redefine out end
 
 feature
 -- Операции со строками.
@@ -49,7 +49,7 @@ feature
 feature
 -- Конвертация в другие типы.
 
-    out, to_string: STRING
+    out: STRING
         external "Java"
         alias "com.eiffel.PLATFORM.STRING_to_string"
     end
