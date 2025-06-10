@@ -175,6 +175,10 @@ public class PLATFORM {
         return new String(Character.toChars(codePoint));
     }
 
+    public static int STRING_hash_code(PLATFORM self) {
+        return self.raw_string.hashCode();
+    }
+
     /* ******************************************************** */
     /* Методы для класса INTEGER */
 

@@ -91,15 +91,21 @@ class ConstPool:
     
     def find_fieldref(self, field_name: str, fq_class_name: str | None = None, desc: str | None = None) -> int:
         """Ищет номер константы Fieldref с заданным именем метода"""
-        fq_class_name = fq_class_name or self.fq_class_name
-
         desc_check = lambda fr: desc is None or fr.type == desc
         fieldref = self.find_constant(
             lambda c: isinstance(c, CONSTANT_Fieldref)
                 and c.field_name == field_name
                 and c.fq_class_name == fq_class_name
                 and desc_check(c))
-        assert fieldref is not None, f"{fq_class_name}: {field_name}"
+        
+        if fieldref is None:
+            fieldref = self.find_constant(
+            lambda c: isinstance(c, CONSTANT_Fieldref)
+                and c.field_name == field_name
+                and c.fq_class_name == self.fq_class_name
+                and desc_check(c))
+
+            assert fieldref is not None, f"{fq_class_name}: {field_name}"
 
         return fieldref.index
 

@@ -5,6 +5,7 @@ class
 inherit
     ANY redefine out, is_equal end
     COMPARABLE redefine out end
+    HASHABLE redefine out end
 
 feature
 -- Операции со строками.
@@ -22,6 +23,12 @@ feature
         -- Количество символов в строке.
         external "Java"
         alias "com.eiffel.PLATFORM.STRING_count"
+    end
+
+    hash_code: INTEGER
+        -- Хэш-код строки.
+        external "Java"
+        alias "com.eiffel.PLATFORM.STRING_hash_code"
     end
 
 feature

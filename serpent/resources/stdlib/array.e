@@ -53,7 +53,7 @@ feature
     at, item (index: INTEGER): G
     -- Возвращает элемент под индексом index.
     do
-        require_that (valid_index (index), index.to_string + " not a valid index")
+        require_that (valid_index (index), index.out + " not a valid index")
 
         Result := item_raw (map_index (index))
     end
@@ -136,7 +136,7 @@ feature
     -- возможно, выполняя сдвиг элементов.
     do
         if index < lower or else index > upper + 1 then
-            crash_with_message (index.to_string + " not a valid index")
+            crash_with_message (index.out + " not a valid index")
         end
 
         add_raw (element, map_index (index))
@@ -161,7 +161,7 @@ feature
     remove (index: INTEGER)
     -- Удаляет элемент из массива по индексу `index`.
     do
-        require_that (valid_index (index), index.to_string + " not a valid index")
+        require_that (valid_index (index), index.out + " not a valid index")
 
         remove_raw (map_index (index))
         upper := upper - 1
@@ -173,7 +173,7 @@ feature
     put (element: like item; index: INTEGER)
     -- Помещает в массив элемент element по индексу index.
     do
-        require_that (valid_index (index), index.to_string + " not a valid index")
+        require_that (valid_index (index), index.out + " not a valid index")
 
         put_raw (element, map_index (index))
     end
@@ -183,8 +183,8 @@ feature
     local
         temp: G
     do
-        require_that (valid_index (i1), "'i1' (" + i1.to_string + ") is not a valid index")
-        require_that (valid_index (i2), "'i2' (" + i2.to_string + ") is not a valid index")
+        require_that (valid_index (i1), "'i1' (" + i1.out + ") is not a valid index")
+        require_that (valid_index (i2), "'i2' (" + i2.out + ") is not a valid index")
 
         temp := item (i1)
         put (item (i2), i1)

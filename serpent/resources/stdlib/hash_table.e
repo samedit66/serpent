@@ -112,6 +112,7 @@ feature {NONE}
         l_capacity: INTEGER
         l_keys: ARRAY [K]
         l_values: ARRAY [V]
+        l_occupied: ARRAY [BOOLEAN]
         i: INTEGER
     do
         l_capacity := (capacity * 15 // 10)
@@ -137,12 +138,12 @@ feature {NONE}
 
 feature
 
-    has_key (k: like item): BOOLEAN
+    has_key (k: K): BOOLEAN
     then
         index_of (k) /= 0
     end
 
-    has_value (v: V): BOOLEAN
+    has_value (v: like item): BOOLEAN
     local
         i: INTEGER
     do
@@ -158,8 +159,9 @@ feature
 
 feature {NONE}
 
-    index_of (k: like item): INTEGER
+    index_of (k: K): INTEGER
     local
+        i: INTEGER
         seen_elements_count: INTEGER
     do
         seen_elements_count := 1
@@ -176,9 +178,9 @@ feature {NONE}
         if Result > keys.upper then Result := 0 end
     end
 
-    internal_index (k: like item): INTEGER
+    internal_index (k: K): INTEGER
     then
-        k.hash_code % keys.count + 1  
+        k.hash_code \\ keys.count + 1  
     end
 
 end
