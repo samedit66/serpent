@@ -468,7 +468,10 @@ def make_class_symtab(
 
             feature_type = feature_value_type_map[like_feature_name]
             feature_value_type_map[feature.name] = feature_type
-            feature_clients_map[feature.name] = feature.node.clients
+            feature_clients_map[feature.name] = [
+                Type(class_name)
+                for class_name in feature.node.clients
+            ]
             feature_node_map[feature.name] = feature.node
 
             not_found = 0
