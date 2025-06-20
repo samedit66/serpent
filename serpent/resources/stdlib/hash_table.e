@@ -40,6 +40,31 @@ feature
 
 feature
 
+    current_keys: like keys
+    -- Ключи, записанные в хэш таблицу.
+    local
+        i, j: INTEGER
+        ks: like keys
+    do
+        create ks.with_capacity (count, 1)
+
+        from
+            i := 1
+            j := 1
+        until
+            i > keys.count
+        loop
+            if occupied [i] then
+                ks [j] := keys [i]
+                j := j + 1
+            end
+
+            i := i + 1
+        end
+
+        Result := ks
+    end
+
     count: INTEGER
     -- Возвращает количество пар ключ-значение в хэш-таблице.
     -- @return Количество пар ключ-значение в хэш-таблице.
@@ -72,6 +97,7 @@ feature
     end
 
 feature
+-- Получение элементов хэш-таблицы.
 
     at, item (k: K): V
     -- Получить элемент по ключу `k`.
@@ -86,6 +112,7 @@ feature
     end
 
 feature
+-- Помещение новых элементов в хэш-таблицу.
 
     put (v: like item; k: K)
     local
@@ -93,16 +120,80 @@ feature
     do
         if is_full then rehash end
 
-        i := internal_index (k)
-        from until not occupied [i]
-        loop i := i + 1 end
+        i := index_of (k)
 
         keys [i] := k
         values [i] := v
         occupied [i] := True
     end
 
+feature
+-- Проверки вхождения элементов.
+
+    has_key (k: K): BOOLEAN
+    -- Есть ли переданный ключ в массиве?
+    local
+        i: INTEGER
+    do
+        from
+            i := keys.lower
+        until
+            (i > keys.upper) or else Result
+        loop
+            Result := occupied [i] and then keys [i] = k
+            i := i + 1
+        end
+    end
+
+    has_value (v: like item): BOOLEAN
+    -- Есть ли переданное значение в массиве?
+    local
+        i: INTEGER
+    do
+        from
+            i := values.lower
+        until
+            (i > values.upper) or else Result
+        loop
+            Result := occupied [i] and then values [i] = v
+            i := i + 1
+        end
+    end
+
 feature {NONE}
+-- Реализация.
+
+    index_of (k: K): INTEGER
+    -- Внутренний индекс для элемента `k`.
+    -- Определяется следующим образом:
+    -- - Если внутренний массив заполнен, доступного индекса нет, результат - 0;
+    -- - Если переданного ключа нет, его индекc, результат - `internal_index (k)`;
+    -- - Иначе, перебираем внутренний массив до тех пор, пока не найден индекс для данного элемента.
+    do
+        if is_full then
+            Result := 0
+        elseif not has_key (k) then
+            Result := internal_index (k)
+        else
+            from
+                Result := internal_index (k)
+            until
+                occupied [Result] and then keys [Result] = k
+            loop
+                Result := Result + 1
+            
+                if Result > keys.upper then
+                    Result := keys.lower
+                end
+            end
+        end
+    end
+
+    internal_index (k: K): INTEGER
+    -- Индекс во внутреннем хранилище.
+    then
+        k.hash_code \\ keys.count + 1  
+    end
 
     rehash
     -- Выполняет "рехэш" хэш-таблицы:
@@ -134,53 +225,6 @@ feature {NONE}
         keys := l_keys
         values := l_values
         occupied := l_occupied
-    end
-
-feature
-
-    has_key (k: K): BOOLEAN
-    then
-        index_of (k) /= 0
-    end
-
-    has_value (v: like item): BOOLEAN
-    local
-        i: INTEGER
-    do
-        from
-            i := values.lower
-        until
-            (i > values.upper) or else Result
-        loop
-            Result := values [i] = v
-            i := i + 1
-        end
-    end
-
-feature {NONE}
-
-    index_of (k: K): INTEGER
-    local
-        i: INTEGER
-        seen_elements_count: INTEGER
-    do
-        seen_elements_count := 1
-
-        from
-            Result := internal_index (k)
-        until
-            (seen_elements_count = count) or else (keys [i] = k)
-        loop
-            Result := Result + 1
-            seen_elements_count := seen_elements_count + 1
-        end
-
-        if Result > keys.upper then Result := 0 end
-    end
-
-    internal_index (k: K): INTEGER
-    then
-        k.hash_code \\ keys.count + 1  
     end
 
 end
