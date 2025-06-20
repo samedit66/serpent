@@ -4,6 +4,9 @@ class
 -- Под капотом использует System.out и System.in.
 -- В стандартной библиотеке Eiffel данный класс называется `STD_INPUT_OUTPUT`.
 
+inherit
+    ANY redefine print, println end
+
 feature
 -- Операции вывода.
 
@@ -13,11 +16,16 @@ feature
         put_string ("%N")
     end
 
-    println (a: ANY)
-    -- Печатает на экран что-то, что может быть представлено в виде строке.
-    -- Дополнительно печатает символ перевода строки на экран.
+    print (object: ANY)
+    -- Печатает на экран объект в виде строки.
     do
-        put_string (a.out)
+        put_string (object.out)
+    end
+
+    println (object: ANY)
+    -- Печатает на экран объект в виде строки с переводом строки.
+    do
+        print (object)
         new_line
     end
 

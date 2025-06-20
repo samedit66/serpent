@@ -83,13 +83,36 @@ feature
         Result := cached_io
     end
 
-    print (s: STRING)
-    -- Печатает строку `s` в стандартный поток вывода.
+    print (object: ANY)
+    -- Печатает переденный object на экран в виде строки.
     do
-        io.put_string (s)
+        io.print (object)
+    end
+
+    println (object: ANY)
+    -- Печатает переданный object на экран с переводом строки..
+    do
+        print (object)
+        print ("%N")
+    end
+
+    write
+    -- Печатает объект на экран.
+    -- Расширение компилятора, не является стандартным методов класса ANY в EiffelStudio.
+    do
+        io.put_string (out)
+    end
+
+    writeln
+    -- Печатает объект на экран с переводом строки.
+    -- Расширение компилятора, не является стандартным методов класса ANY в EiffelStudio.
+    do
+        write
+        io.new_line
     end
 
 feature
+-- Представления объекта.
 
     out: STRING
     -- Представление объекта в виде строки.
