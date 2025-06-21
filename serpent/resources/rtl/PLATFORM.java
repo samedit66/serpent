@@ -1,6 +1,7 @@
 package com.eiffel;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -37,6 +38,11 @@ public class PLATFORM {
 
     // Аргументы командной строки.
     public static String[] command_line_args;
+
+    // Файловые переменные.
+    public String fn;
+    public BufferedReader plainTextFileReader;
+    public BufferedWriter plainTextFileWriter;
 
     public static void setArgs(String[] args) {
         command_line_args = args;
@@ -420,5 +426,123 @@ public class PLATFORM {
 
     public static String BOOLEAN_to_string(PLATFORM self) {
         return self.raw_int == 1 ? "True" : "False";
+    }
+
+    /* Методы класса PLAIN_TEXT_FILE */
+
+    public static int PLAIN_TEXT_FILE_make_open_read(PLATFORM self, String fn) {
+        try {
+            self.plainTextFileReader = new java.io.BufferedReader(
+                new java.io.InputStreamReader(
+                    new java.io.FileInputStream(fn),
+                    java.nio.charset.StandardCharsets.UTF_8
+                )
+            );
+            self.fn = fn;
+            return 1;
+        } catch (java.io.IOException e) {
+            return 0;
+        }
+    }
+    
+    public static int PLAIN_TEXT_FILE_make_open_write(PLATFORM self, String fn) {
+        try {
+            self.plainTextFileWriter = new java.io.BufferedWriter(
+                new java.io.OutputStreamWriter(
+                    new java.io.FileOutputStream(fn, false),
+                    java.nio.charset.StandardCharsets.UTF_8
+                )
+            );
+            self.fn = fn;
+            return 1;
+        } catch (java.io.IOException e) {
+            return 0;
+        }
+    }
+    
+    public static int PLAIN_TEXT_FILE_make_open_append(PLATFORM self, String fn) {
+        try {
+            self.plainTextFileWriter = new java.io.BufferedWriter(
+                new java.io.OutputStreamWriter(
+                    new java.io.FileOutputStream(fn, true),
+                    java.nio.charset.StandardCharsets.UTF_8
+                )
+            );
+            self.fn = fn;
+            return 1;
+        } catch (java.io.IOException e) {
+            return 0;
+        }
+    }
+    
+    public static int PLAIN_TEXT_FILE_exists(PLATFORM self) {
+        return new java.io.File(self.fn).exists() ? 1 : 0;
+    }
+    
+    public static void PLAIN_TEXT_FILE_close(PLATFORM self) {
+        try {
+            if (self.plainTextFileReader != null) {
+                self.plainTextFileReader.close();
+                self.plainTextFileReader = null;
+            }
+            if (self.plainTextFileWriter != null) {
+                self.plainTextFileWriter.close();
+                self.plainTextFileWriter = null;
+            }
+        } catch (java.io.IOException ignored) {
+        }
+    }
+    
+    public static void PLAIN_TEXT_FILE_put(PLATFORM self, int codePoint) {
+        try {
+            self.plainTextFileWriter.write(codePoint);
+        } catch (java.io.IOException ignored) {
+        }
+    }
+    
+    public static int PLAIN_TEXT_FILE_getc(PLATFORM self) {
+        try {
+            int first = self.plainTextFileReader.read();
+            if (first < 0) {
+                return -1;    // EOF
+            }
+            char c1 = (char) first;
+            if (Character.isHighSurrogate(c1)) {
+                // Попробуем прочитать второй суррогатный элемент
+                self.plainTextFileReader.mark(1);
+                int second = self.plainTextFileReader.read();
+                if (second >= 0) {
+                    char c2 = (char) second;
+                    if (Character.isLowSurrogate(c2)) {
+                        // Успешно прочитали пару суррогатов – вернём единый code point
+                        return Character.toCodePoint(c1, c2);
+                    }
+                }
+                // Если не получилось составить пару – «откатаем» чтение второго элемента
+                self.plainTextFileReader.reset();
+            }
+            // Обычный BMP-символ или незаконченная суррогатная пара
+            return first;
+        } catch (java.io.IOException e) {
+            return -1;
+        }
+    }
+    
+    // Проверить конец файла (нет больше codepoints)
+    public static int PLAIN_TEXT_FILE_exhausted(PLATFORM self) {
+        try {
+            self.plainTextFileReader.mark(2);
+            int first = self.plainTextFileReader.read();
+            if (first < 0) {
+                return 1;
+            }
+            if (Character.isHighSurrogate((char) first)) {
+                self.plainTextFileReader.read(); // пропустить низший суррогат
+            }
+            self.plainTextFileReader.reset();
+            return 0;
+        } catch (java.io.IOException e) {
+            return 1;
+        }
     }
 }
