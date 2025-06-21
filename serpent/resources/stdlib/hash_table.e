@@ -1,6 +1,6 @@
 class
-    HASH_TABLE [K -> HASHABLE, V]
-    -- Хэш-таблица, которая хранит пары ключ-значение.
+    HASH_TABLE [V, K -> HASHABLE]
+    -- Хэш-таблица. Хранит пары "ключ-значение".
 
 create
     make,
@@ -21,9 +21,10 @@ feature {NONE}
     -- Размер хэш-таблицы по умолчанию.
 
 feature
+-- Конструкторы.
 
     make (a_capacity: INTEGER)
-    -- Создает хэш-таблицу с заданным размером.
+    -- Создает хэш-таблицу с заданной начальной емкостью.
     -- @param size Начальный размер хэш-таблицы.
     do
         capacity := a_capacity
@@ -41,7 +42,8 @@ feature
 feature
 
     current_keys: like keys
-    -- Ключи, записанные в хэш таблицу.
+    -- Ключи, записанные в хэш-таблицу.
+    -- @return Новый массив ключей, записанных в хэш-таблицу.
     local
         i, j: INTEGER
         ks: like keys
@@ -86,12 +88,14 @@ feature
 
     is_full: BOOLEAN
     -- Заполнена ли хэш-таблица полностью?
+    -- @return True, если в таблице нет свободных ячеек, иначе - False.
     then
         count = occupied.count
     end
 
     is_empty: BOOLEAN
     -- Пустая ли хэш-таблица?
+    -- @return True, если в таблице ничего нет, иначе - False.
     then
         count = 0
     end
@@ -99,29 +103,70 @@ feature
 feature
 -- Получение элементов хэш-таблицы.
 
-    at, item (k: K): V
+    item (k: K): V
     -- Получить элемент по ключу `k`.
     -- @param k Ключ.
     -- @return Значение по ключу.
     local
         i: INTEGER
+        cached_found: BOOLEAN
+        cached_found_item: V
     do
-        i := index_of (k)
-        require_that (i /= 0, "Key " + k.out + "is not present in the hash table")
-        Result := values [i]
+        -- Сохраняем старые значения `found` и `found_item`,
+        -- т.к. далее для поиска используем мутатор `search`.
+        cached_found := found
+        cached_found_item := found_item 
+
+        search (k)
+
+        require_that (
+            found,
+            "Key " + k.out + "is not present in the hash table"
+        )
+
+        Result := found_item
+
+        -- Восстаналиваем сохраненные ранее значения.
+        found := cached_found
+        found_item := cached_found_item
     end
 
 feature
 -- Помещение новых элементов в хэш-таблицу.
 
     put (v: like item; k: K)
+    -- Помещает элемент `v` по ключу `k`.
+    -- Если элемент с ключем `k` уже есть, заменяет его.
+    -- @param `v` Значение.
+    -- @param `k` Ключ.
     local
         i: INTEGER
     do
-        if is_full then rehash end
+        if is_full then accomodate end
 
-        i := index_of (k)
+        -- Производим поиск в правой половине массиве:
+        -- начиная с предположительного индекса и до конца.
+        from
+            i := internal_index (k)
+        until
+            (i > keys.upper) or else (not occupied [i] or occupied [i] and then keys [i] = k)
+        loop
+            i := i + 1
+        end
 
+        -- Если свободная ячейка не была найдена, ищем
+        -- её в левой половине массива.
+        if i > keys.upper then
+            from
+                i := keys.lower
+            until
+                (i > keys.upper) or else (not occupied [i] or occupied [i] and then keys [i] = k)
+            loop
+                i := i + 1
+            end
+        end
+
+        -- Записываем элемент во внутренний массив.
         keys [i] := k
         values [i] := v
         occupied [i] := True
@@ -130,19 +175,37 @@ feature
 feature
 -- Проверки вхождения элементов.
 
-    has_key (k: K): BOOLEAN
-    -- Есть ли переданный ключ в массиве?
+    found_item: V
+    -- Элемент, найденный в результате вызова `has_key`.
+    -- `Void`, если элемент не был найден.
+
+    found: BOOLEAN
+    -- Был ли найден элемент в результате вызова `search`?
+
+    search (k: K)
+    -- Выполняет поиск ключа `k` в таблице.
+    -- Устанавливает `has_found` и `found_item` для более быстрого поиска.
+    -- @param k Ключ для поиска.
     local
         i: INTEGER
     do
-        from
-            i := keys.lower
-        until
-            (i > keys.upper) or else Result
-        loop
-            Result := occupied [i] and then keys [i] = k
-            i := i + 1
+        i := find_index_of (k)
+
+        if i /= 0 then
+            found := True
+            found_item := values [i]
+        else
+            found := False
+            found_item := Void
         end
+    end
+
+    has_key (k: K): BOOLEAN
+    -- Есть ли переданный ключ в хэш-таблице?
+    -- @param k Ключ для поиска.
+    -- @return `True`, если ключ `k` есть в таблице, иначе - `False`.
+    then
+        find_index_of (k) /= 0
     end
 
     has_value (v: like item): BOOLEAN
@@ -163,42 +226,15 @@ feature
 feature {NONE}
 -- Реализация.
 
-    index_of (k: K): INTEGER
-    -- Внутренний индекс для элемента `k`.
-    -- Определяется следующим образом:
-    -- - Если внутренний массив заполнен, доступного индекса нет, результат - 0;
-    -- - Если переданного ключа нет, его индекc, результат - `internal_index (k)`;
-    -- - Иначе, перебираем внутренний массив до тех пор, пока не найден индекс для данного элемента.
-    do
-        if is_full then
-            Result := 0
-        elseif not has_key (k) then
-            Result := internal_index (k)
-        else
-            from
-                Result := internal_index (k)
-            until
-                occupied [Result] and then keys [Result] = k
-            loop
-                Result := Result + 1
-            
-                if Result > keys.upper then
-                    Result := keys.lower
-                end
-            end
-        end
-    end
-
     internal_index (k: K): INTEGER
     -- Индекс во внутреннем хранилище.
     then
         k.hash_code \\ keys.count + 1  
     end
 
-    rehash
-    -- Выполняет "рехэш" хэш-таблицы:
-    -- увеличивает емкость в 1.5 раза и копирует все элементы
-    -- в новую область памяти.
+    accomodate
+    -- Выделяет новую память для внутреннего массива.
+    -- Размер новой емкость: `cap := `(old cap) * 1.5`.
     local
         l_capacity: INTEGER
         l_keys: ARRAY [K]
@@ -225,6 +261,46 @@ feature {NONE}
         keys := l_keys
         values := l_values
         occupied := l_occupied
+    end
+
+    find_index_of (k: K): INTEGER
+    -- Есть ли переданный ключ в хэш-таблице?
+    -- @param `k` Ключ для поиска.
+    -- @return `True`, если ключ `k` есть в таблице, иначе - `False`.
+    local
+        possible_index: INTEGER
+        l_found: BOOLEAN
+        i: INTEGER
+    do
+        possible_index := internal_index (k)
+
+        -- Производим поиск в правой половине массиве:
+        -- начиная с possible_index и до конца.
+        from
+            i := possible_index
+        until
+            (i > keys.upper) or else l_found
+        loop
+            l_found := occupied [i] and then keys [i] = k
+            i := i + 1
+        end
+
+        -- Если в правой половине массива такого элемента не было найдено,
+        -- пробуем искать его в левой.
+        if not l_found then
+            from
+                i := keys.lower
+            until
+                i = possible_index or else l_found
+            loop
+                l_found := occupied [i] and then keys [i] = k
+                i := i + 1
+            end
+        end
+
+        -- Вычитаем -1 из `i`, т.к. `i` указывает на следующую ячейку
+        -- (см. цикл выше).
+        if l_found then Result := i - 1 end
     end
 
 end
