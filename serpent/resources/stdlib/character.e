@@ -7,22 +7,29 @@ class
 inherit
     ANY redefine out, is_equal end
     COMPARABLE redefine out end
+    HASHABLE redefine out end
 
 feature
 -- Операции сравнения.
 
     is_less (other: like Current): BOOLEAN
-        external "Java"
-        alias "com.eiffel.PLATFORM.CHARACTER_is_less"
+    then
+        code_point < other.code_point
     end
 
     is_equal (other: like Current): BOOLEAN
-        external "Java"
-        alias "com.eiffel.PLATFORM.CHARACTER_is_equal"
+    then
+        code_point = other.code_point
     end
 
 feature
 -- Характеристики.
+
+    hash_code: INTEGER
+    -- Хэш-код.
+    then
+        code_point
+    end
 
     code_point: INTEGER
     -- code point для данного символа.
@@ -37,4 +44,5 @@ feature
         external "Java"
         alias "com.eiffel.PLATFORM.CHARACTER_to_string"
     end
+
 end
