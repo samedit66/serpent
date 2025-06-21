@@ -77,7 +77,13 @@ feature
 -- Поля, хранящие значение, считанные с потока ввода.
 
     last_string: STRING
-    -- Последняя считанная через `read_line` строка.
+    -- Последняя считанная через `read_line` строка. Синоним для `last_line`.
+
+    last_line: STRING
+    -- Последняя считанная через `read_line` строка. Синоним для `last_string`.
+    then
+        last_string
+    end
 
     last_integer: INTEGER
     -- Последнее считанное через `read_integer` целое число.
