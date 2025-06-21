@@ -8,7 +8,7 @@ feature
                     
     make
     local
-        table: HASH_TABLE [CHARACTER; INTEGER]
+        table: HASH_TABLE [INTEGER; CHARACTER]
         letters: ARRAY [CHARACTER]
         i: INTEGER
     do
