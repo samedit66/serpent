@@ -35,6 +35,13 @@ public class PLATFORM {
     public float raw_float;
     public String raw_string;
 
+    // Аргументы командной строки.
+    public static String[] command_line_args;
+
+    public static void setArgs(String[] args) {
+        command_line_args = args;
+    }
+
     // Поля для представления массива значений PLATFORM
     public ArrayList<PLATFORM> raw_array;
 
@@ -84,6 +91,16 @@ public class PLATFORM {
     public PLATFORM(ArrayList<PLATFORM> array) {
         value_type = ARRAY_TYPE;
         raw_array = array;
+    }
+
+    /* ******************************************************** */
+    /* Методы для класса ARGUMENTS */
+    public static int ARGUMENTS_argument_count(PLATFORM self) {
+        return command_line_args.length;
+    }
+
+    public static String ARGUMENTS_argument(PLATFORM self, int i) {
+        return command_line_args[i - 1];
     }
 
     /* ******************************************************** */

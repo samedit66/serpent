@@ -33,6 +33,7 @@ feature
     do
         print ("Hello, world!%N")
     end
+
 end
 """)
     except OSError as e:
@@ -61,12 +62,20 @@ def main() -> None:
 
     # `run` command
     run_parser = subparsers.add_parser("run", help="Run compiled class files.")
-    run_parser.add_argument("classpath", nargs="?", default="classes", help="Folder with class files (default: classes).")
-    run_parser.add_argument("-m", "--mainclass", default="APPLICATION", help="Main class (default: APPLICATION).")
+    run_parser.add_argument(
+        "-c", "--classpath",
+        default="classes",
+        help="Folder with class files (default: classes)."
+    )
+    run_parser.add_argument(
+        "-m", "--mainclass",
+        default="APPLICATION",
+        help="Main class (default: APPLICATION)."
+    )
 
     # `exec` command
     exec_parser = subparsers.add_parser("exec", help="Compile an Eiffel project and run compiled class files.")
-    exec_parser.add_argument("source", nargs="?", default=".", help="Source folder (default: current directory).")
+    exec_parser.add_argument("-s", "--source", default=".", help="Source folder (default: current directory).")
     exec_parser.add_argument("-m", "--mainclass", default="APPLICATION", help="Main class (default: APPLICATION).")
     exec_parser.add_argument("-r", "--mainroutine", default="make", help="Main method (default: make).")
     exec_parser.add_argument("-j", "--javaversion", type=int, default=8, help="Java version (default: 8).")
@@ -80,7 +89,7 @@ def main() -> None:
     jar_parser.add_argument("-d", "--outputdir", default=".", help="Output folder for the JAR file (default: current directory).")
     jar_parser.add_argument("-n", "--jarname", default="app.jar", help="Jar name (default: app.jar).")
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     error_collector = ErrorCollector()
     stdlib = get_resource_path("stdlib")
@@ -108,6 +117,7 @@ def main() -> None:
             error_collector,
             args.mainclass,
             eiffel_package="com.eiffel",
+            cmd_args=unknown,
         )
     elif args.command == "exec":
         build_class_files(

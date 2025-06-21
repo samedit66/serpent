@@ -21,7 +21,8 @@ from serpent.codegen.class_file import make_class_file
 def run(classpath: str,
         error_collector: ErrorCollector,
         main_class_name: str,
-        eiffel_package: str) -> None:
+        eiffel_package: str,
+        cmd_args: list[str]) -> None:
     fq_main_class = f"{eiffel_package}.{main_class_name}"
     # В модуле codegen отсутствует генерация stack map frames,
     # поэтому запускаем JVM с флагом компиляции -noverify
@@ -29,7 +30,8 @@ def run(classpath: str,
         "java",
         "-noverify",
         "-classpath", classpath,
-        fq_main_class
+        fq_main_class,
+        *cmd_args,
     ]
 
     try:

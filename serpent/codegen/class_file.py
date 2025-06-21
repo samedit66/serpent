@@ -535,6 +535,7 @@ def make_class_file(
     # необходимо сгенерировать метод main, в который необходимо 
     # добавить метод следующего вида:
     # public static void main (String[] args) {
+    #     setArgs(args);
     #     APPLICATION app = new APPLICATION();
     #     app.make();     
     # }
@@ -558,18 +559,27 @@ def make_class_file(
             method_name=entry_point_method,
             fq_class_name=root_class_name,
             desc="()V")
-        
+        set_args_index = constant_pool.add_methodref(
+            method_name="setArgs",
+            desc="([Ljava/lang/String;)V",
+            fq_class_name=root_class_name
+        )
+
         bytecode = [
+            Aload(0),
+            InvokeStatic(set_args_index),
             New(root_class_index),
             Dup(),
             InvokeSpecial(init_index),
             InvokeVirtual(entry_point_index),
-            Return()]
+            Return(),
+        ]
         
         code = CodeAttribute(
             constant_pool.add_utf8("Code"),
             LocalTable(), # Не is_static == True, чтобы размер был как минимум 1 - под параметр args
-            bytecode)
+            bytecode,
+        )
         
         methodref = constant_pool.get_by_index(main_index)
         nat = constant_pool.get_by_index(methodref.name_and_type_index)
