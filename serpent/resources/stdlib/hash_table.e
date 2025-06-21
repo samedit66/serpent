@@ -269,7 +269,7 @@ feature
         find_index_of (k) /= 0
     end
 
-    has_value (v: like item): BOOLEAN
+    has_item, has_value (v: like item): BOOLEAN
     -- Есть ли переданное значение в массиве?
     local
         i: INTEGER
