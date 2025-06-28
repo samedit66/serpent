@@ -37,12 +37,35 @@ feature
         alias "com.eiffel.PLATFORM.CHARACTER_code_point"
     end
 
+    is_digit: BOOLEAN
+    -- Является ли текущий символ цифрой от 0 до 9?
+    local
+        possible_digit: INTEGER
+    do
+        possible_digit := code_point - '0'.code_point
+        Result := possible_digit.in_range (0, 9)
+    end
+
+    is_space: BOOLEAN
+    -- Является ли символ пробельным?
+    then
+        Current = ' '
+        or else Current = '%T'
+        or else Current = '%N'
+    end
+
 feature
 -- Конвертация в другие типы.
 
     out: STRING
         external "Java"
         alias "com.eiffel.PLATFORM.CHARACTER_to_string"
+    end
+
+    as_digit, to_integer: INTEGER
+    do
+        require_that (is_digit, "Character does not represent a digit")
+        Result := code_point - '0'.code_point
     end
 
 end

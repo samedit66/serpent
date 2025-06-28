@@ -6,6 +6,7 @@ class
 
 inherit
     ANY redefine print, println end
+    TEXT_FILE redefine print, println end
 
 feature
 -- Операции вывода.
@@ -44,7 +45,7 @@ feature
         put_string (i.out)
     end
 
-    put_character (c: CHARACTER)
+    put, put_character (c: CHARACTER)
     -- Печатает символ в стандартный поток вывода (System.out).
     do
         put_string (c.out)
