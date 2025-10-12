@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling", "hatch-build-scripts"]
+build-backend = "hatchling.build"
+
+[project]
+name = "serpent"
+version = "0.1.0"
+description = "Serpent Eiffel Compiler CLI"
+requires-python = ">=3.13"
+authors = [{ name = "samedit66", email = "samedit66@yandex.ru" }]
+dependencies = []
+[project.optional-dependencies]
+tqdm = ["tqdm"]
+[project.scripts]
+serpent = "serpent.cmd:main"
+
+# hatchling: run `make` before packaging and include artifacts
+[tool.hatch.build.hooks.build-scripts]
+# global defaults for the hook
+clean_artifacts = false
+# a single hook with commands to run
+[[tool.hatch.build.hooks.build-scripts.scripts]]
+commands = [
+  "make"
+]
+# include artifacts produced by make - using gitignore style globs
+artifacts = [
+  "serpent/resources/build/**",
+  "serpent/resources/stdlib/**",
+  "serpent/resources/rtl/**"
+]
+# work_dir and out_dir default to project root

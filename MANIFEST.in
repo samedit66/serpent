@@ -1,3 +1,0 @@
-recursive-include serpent/resources/build *
-recursive-include serpent/resources/stdlib *
-recursive-include serpent/resources/rtl *
