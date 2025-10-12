@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "./include/json.h"
 #include "./include/strbuf.h"
 
@@ -120,7 +122,7 @@ _indent(StringBuffer *strbuf, int indent_level, int indent_size) {
 static inline void
 _append_int_to_buf(StringBuffer *strbuf, int value) {
     char buffer[20];
-    itoa(value, buffer, 10);
+    snprintf(buffer, sizeof(buffer), "%d", value);
     StringBuffer_append(strbuf, buffer);
 }
 

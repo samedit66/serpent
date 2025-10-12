@@ -721,7 +721,7 @@ write_output_tree(char *file_name, Json *tree, bool pretty) {
     char *json = pretty ? Json_to_pretty_string(tree) : Json_to_short_string(tree);
 
     if (file_name == NULL) {
-        printf(json);
+        puts(json);
         free(json);
         return true;
     }
@@ -732,7 +732,7 @@ write_output_tree(char *file_name, Json *tree, bool pretty) {
         return false;
     }
 
-    fprintf(output_file, json);
+    fputs(json, output_file);
     fclose(output_file);
     free(json);
 
