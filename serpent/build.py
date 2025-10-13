@@ -2,6 +2,7 @@ from pathlib import Path
 import json
 import subprocess
 import sys
+import shutil
 
 from serpent.parser_adapter import parse_files
 from serpent.errors import ErrorCollector, CompilerError
@@ -19,15 +20,27 @@ from serpent.codegen.class_file import make_class_file
 
 
 def run(classpath: str,
-        error_collector: ErrorCollector,
+        error_collector: "ErrorCollector",
         main_class_name: str,
         eiffel_package: str,
         cmd_args: list[str]) -> None:
+    java = find_java()
+    if not java:
+        msg = (
+            "java executable not found. Please install a JDK and ensure 'java' is on PATH, "
+            "or set JAVA_HOME (and add $JAVA_HOME/bin to PATH). On WSL you may have only "
+            "java.exe available — ensure it's reachable from the environment running the build."
+        )
+        error_collector.add_error(
+            CompilerError(msg, source="serpent")
+        )
+        return
+
     fq_main_class = f"{eiffel_package}.{main_class_name}"
     # В модуле codegen отсутствует генерация stack map frames,
     # поэтому запускаем JVM с флагом компиляции -noverify
-    javac_cmd = [
-        "java",
+    java_cmd = [
+        java,
         "-noverify",
         "-classpath", classpath,
         fq_main_class,
@@ -36,7 +49,7 @@ def run(classpath: str,
 
     try:
         result = subprocess.run(
-            javac_cmd,
+            java_cmd,
             stdout=sys.stdout,
             stderr=subprocess.PIPE,
             text=True
@@ -45,10 +58,97 @@ def run(classpath: str,
             error_collector.add_error(
                 CompilerError(f"Runtime error: {result.stderr}", source="serpent")
             )
+    except FileNotFoundError as e:
+        # should be rare because we checked find_java(), but keep safety
+        error_collector.add_error(
+            CompilerError(f"Java execution failed (not found): {e}", source="serpent")
+        )
     except Exception as e:
         error_collector.add_error(
-            CompilerError(f"Java compilation failed: {e}", source="serpent")
+            CompilerError(f"Java execution failed: {e}", source="serpent")
         )
+
+
+def find_java():
+    """
+    Robustly find a Java executable suitable for subprocess execution.
+    Returns absolute path or executable name, or None if not found.
+    """
+    # 1) normal lookup for 'java'
+    p = shutil.which("java")
+    if p:
+        return p
+
+    # 2) WSL/Windows: try 'java.exe'
+    p = shutil.which("java.exe")
+    if p:
+        return p
+
+    # 3) JAVA_HOME/bin/java(.exe)
+    java_home = os.environ.get("JAVA_HOME")
+    if java_home:
+        for name in ("java", "java.exe"):
+            candidate = os.path.join(java_home, "bin", name)
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                return candidate
+
+    # 4) ask an interactive shell (picks aliases, shell-installed shims)
+    resolved = _resolve_from_interactive_shell("command -v java")
+    if resolved:
+        return resolved
+
+    # 5) nothing found
+    return None
+
+
+def _resolve_from_interactive_shell(cmd: str = "command -v java"):
+    """
+    Ask an interactive shell what it would run for `java`.
+    This picks up aliases or environment modifications in interactive shells.
+    Returns a path or executable name, or None.
+    """
+    try:
+        proc = subprocess.run(
+            ["bash", "-ic", cmd],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=3,
+        )
+        out = proc.stdout.strip()
+        if not out:
+            return None
+
+        # sanitize possible outputs:
+        # - absolute path like /usr/bin/java -> return as-is
+        # - "java: aliased to java.exe" -> extract last token
+        # - "java is /mnt/c/..." or similar -> extract path-like token
+        first_line = out.splitlines()[0].strip()
+
+        # if it contains "aliased to", get the last token
+        if "aliased to" in first_line:
+            # e.g. "java: aliased to java.exe" -> "java.exe"
+            token = first_line.split()[-1]
+            # try to find that on PATH
+            found = shutil.which(token)
+            if found:
+                return found
+            # fallback: return token (it might be an executable name usable directly)
+            return token
+
+        # if the first token looks like an absolute path, return it
+        if first_line.startswith("/"):
+            return first_line
+
+        # otherwise try to resolve with shutil.which
+        found = shutil.which(first_line)
+        if found:
+            return found
+
+        # else, return the raw first_line (may be e.g. "java.exe")
+        return first_line
+    except Exception:
+        return None
 
 
 def make_jar(build_dir: str,
@@ -294,8 +394,53 @@ def compile_java_files(
         )
         return
 
+    def find_javac():
+        # 1) normal lookup
+        p = shutil.which("javac")
+        if p:
+            return p
+
+        # 2) check for Windows exe on PATH (useful in WSL)
+        p = shutil.which("javac.exe")
+        if p:
+            return p
+
+        # 3) JAVA_HOME/bin/javac(.exe)
+        java_home = os.environ.get("JAVA_HOME")
+        if java_home:
+            for name in ("javac", "javac.exe"):
+                candidate = os.path.join(java_home, "bin", name)
+                if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                    return candidate
+
+        # 4) ask an interactive shell (will pick up aliases in ~/.bashrc)
+        try:
+            out = subprocess.run(
+                ["bash", "-ic", "command -v javac"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=3,
+            ).stdout.strip()
+            if out:
+                return out
+        except Exception:
+            pass
+
+        return None
+
+    javac = find_javac()
+    if javac is None:
+        error_collector.add_error(
+            CompilerError(
+                "javac not found. Install JDK or set JAVA_HOME and add $JAVA_HOME/bin to PATH "
+                "or ensure 'javac' command is available (in WSL you may have javac.exe only)."
+            )
+        )
+        return
+
     javac_cmd = [
-        "javac",
+        javac,
         "-d", str(build_dir),
         "--release", str(java_version)
     ] + java_files
@@ -309,9 +454,10 @@ def compile_java_files(
         )
         if result.returncode != 0:
             error_collector.add_error(
-                CompilerError(f"Java compilation error: {result.stderr}", source="serpent")
+                CompilerError(f"Java compilation error: {result.stderr}, args: {result.args}", source="serpent")
             )
     except Exception as e:
+        print(javac_cmd)
         error_collector.add_error(
             CompilerError(f"Java compilation failed: {e}", source="serpent")
         )
