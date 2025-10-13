@@ -4,6 +4,8 @@ import subprocess
 import sys
 import shutil
 
+from tqdm import tqdm
+
 from serpent.parser_adapter import parse_files
 from serpent.errors import ErrorCollector, CompilerError
 
@@ -327,8 +329,7 @@ def compile_eiffel_classes(
 
     build_dir = Path(build_dir)
 
-    if verbose and is_tqdm_installed():
-        from tqdm import tqdm
+    if verbose:
         progress_bar = tqdm(all_classes, desc="Compiling classes")
     else:
         progress_bar = all_classes
@@ -359,14 +360,6 @@ def compile_eiffel_classes(
                 CompilerError(f"Error writing file {class_filename}: {e}", source="serpent")
             )
             return
-
-
-def is_tqdm_installed() -> bool:
-    try:
-        import tqdm
-        return True
-    except ImportError:
-        return False
 
 
 def compile_java_files(

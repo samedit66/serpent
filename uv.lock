@@ -15,15 +15,12 @@ wheels = [
 name = "serpent"
 version = "0.1.0"
 source = { editable = "." }
-
-[package.optional-dependencies]
-tqdm = [
+dependencies = [
     { name = "tqdm" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "tqdm", marker = "extra == 'tqdm'" }]
-provides-extras = ["tqdm"]
+requires-dist = [{ name = "tqdm", specifier = ">=4.67.1" }]
 
 [[package]]
 name = "tqdm"

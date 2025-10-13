@@ -8,9 +8,10 @@ version = "0.1.0"
 description = "Serpent Eiffel Compiler CLI"
 requires-python = ">=3.13"
 authors = [{ name = "samedit66", email = "samedit66@yandex.ru" }]
-dependencies = []
-[project.optional-dependencies]
-tqdm = ["tqdm"]
+dependencies = [
+    "tqdm>=4.67.1",
+]
+
 [project.scripts]
 serpent = "serpent.cmd:main"
 
