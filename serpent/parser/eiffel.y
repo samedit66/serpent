@@ -93,6 +93,7 @@
 %type <tree> require_part_opt require_part
 %type <tree> ensure_part_opt ensure_part
 %type <tree> condition_list condition
+%type <tree> once_part
 
 %type <tree> ident_list
 
@@ -176,6 +177,7 @@
 %token DEFERRED "deferred"
 %token EXTERNAL "external"
 %token ALIAS "alias"
+%token ONCE "once"
 
 %nonassoc DEFERRED
 %nonassoc EFFECTIVE
@@ -406,7 +408,11 @@ routine_body: require_part_opt do_part then_part_opt ensure_part_opt END { $$ = 
             | local_part require_part_opt then_part ensure_part_opt END { $$ = mk_effective_routine_body($1, $2, NULL, $3, $4); }
             | require_part_opt DEFERRED ensure_part_opt END { $$ = mk_deferred_routine_body($1, $3); }
             | require_part_opt EXTERNAL STRING_CONST ALIAS STRING_CONST ensure_part_opt END { $$ = mk_external_routine_body($3, $5, $1, $6); }
+            | local_part require_part_opt once_part then_part_opt ensure_part_opt END { $$ = mk_once_routine_body($1, $2, $3, $4, $5); }
             ;
+
+once_part: ONCE stmt_list_opt { $$ = $2; }
+         ;
 
 local_part: LOCAL var_decl_list { $$ = $2; }
           ;

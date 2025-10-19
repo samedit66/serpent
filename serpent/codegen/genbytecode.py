@@ -150,7 +150,7 @@ def generate_bytecode_for_character_const(
     return bytecode
 
 
-def generate_bytecode_for_void_const() -> list[ByteCommand]:
+def generate_bytecode_for_void_const(pool: ConstPool) -> list[ByteCommand]:
     return [Aconst_null()]
 
 
@@ -484,9 +484,7 @@ def generate_bytecode_for_expr(
         case TStringConst():
             return generate_bytecode_for_string_const(texpr, pool)
         case TVoidConst():
-            return generate_bytecode_for_void_const()
-        case TStringConst():
-            return generate_bytecode_for_void_const(texpr)
+            return generate_bytecode_for_void_const(pool)
         case TCreateExpr():
             return generate_bytecode_for_create_expr(
                 texpr, fq_class_name, pool, local_table)

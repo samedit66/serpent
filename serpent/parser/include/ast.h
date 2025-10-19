@@ -616,6 +616,16 @@ Json*
 mk_deferred_routine_body(Json *require, Json *ensure);
 
 /**
+ * Создает узел тела once функции или процедуры
+ * 
+ * @param require Блок предусловий
+ * @param ensure Блок постусловий
+ * @return Узел тела отложенной функции
+ */
+Json*
+mk_once_routine_body(Json *local, Json *require, Json *do_clause, Json *then, Json *ensure);
+
+/**
  * Создает узел помеченного условия
  * 
  * @param tag Метка условия

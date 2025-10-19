@@ -535,11 +535,11 @@ mk_routine_with_no_args(Json *name_and_type, Json *routine_body) {
 }
 
 Json*
-mk_routine_body(bool is_deferred, Json *local, Json *require, Json *do_clause, Json *then, Json *ensure) {
+mk_routine_body(char *routine_type, Json *local, Json *require, Json *do_clause, Json *then, Json *ensure) {
     Json *routine_body = Json_new();
 
     add_type_to_node(routine_body, "routine_body");
-    Json_add_bool_to_object(routine_body, "is_deferred", is_deferred);
+    Json_add_string_to_object(routine_body, "routine_type", routine_type);
     Json_add_array_to_object(routine_body, "local", local == NULL ? mk_list() : local);
     Json_add_array_to_object(routine_body, "require", require == NULL ? mk_list() : require);
     Json_add_array_to_object(routine_body, "do", do_clause == NULL ? mk_list() : do_clause);
@@ -554,12 +554,17 @@ mk_routine_body(bool is_deferred, Json *local, Json *require, Json *do_clause, J
 
 Json*
 mk_effective_routine_body(Json *local, Json *require, Json *do_clause, Json *then, Json *ensure) {
-    return mk_routine_body(false, local, require, do_clause, then, ensure);
+    return mk_routine_body("regular", local, require, do_clause, then, ensure);
 }
 
 Json*
 mk_deferred_routine_body(Json *require, Json *ensure) {
-    return mk_routine_body(true, mk_list(), require, NULL, NULL, ensure);
+    return mk_routine_body("deferred", mk_list(), require, NULL, NULL, ensure);
+}
+
+Json*
+mk_once_routine_body(Json *local, Json *require, Json *do_clause, Json *then, Json *ensure) {
+    return mk_routine_body("once", local, require, do_clause, then, ensure);
 }
 
 Json*

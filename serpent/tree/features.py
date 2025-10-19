@@ -189,11 +189,12 @@ def make_do(method_dict: dict) -> list[Statement]:
 
 
 def make_method(clients: list[str], method_dict: dict) -> Method:
+    is_deferred = method_dict["body"]["routine_type"] == "deferred"
     return Method(
         location=Location(**method_dict["location"]),
         name=method_dict["name_and_type"]["name"],
         clients=clients,
-        is_deferred=method_dict["body"]["is_deferred"],
+        is_deferred=is_deferred,
         return_type=make_type_decl(method_dict["name_and_type"]["field_type"]),
         parameters=make_parameters(method_dict["params"]),
         do=make_do(method_dict),
