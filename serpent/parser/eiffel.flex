@@ -219,7 +219,7 @@ or{WHITESPACE}else 	    { LOG_LEXEM("operator", "OR_ELSE"); return OR_ELSE; }
 "note" 					{ LOG_LEXEM("keyword", "NOTE"); }
 "obsolete"              { LOG_LEXEM("keyword", "OBSOLETE"); }
 "old"                   { LOG_LEXEM("keyword", "OLD"); }
-"once"                  { LOG_LEXEM("keyword", "ONCE"); }
+"once"                  { LOG_LEXEM("keyword", "ONCE"); return ONCE; }
 "only"                  { LOG_LEXEM("keyword", "ONLY"); }
 "Precursor" 			{ LOG_LEXEM("keyword", "PRECURSOR"); return PRECURSOR; }
 "redefine" 				{ LOG_LEXEM("keyword", "REDEFINE"); return REDEFINE; }
