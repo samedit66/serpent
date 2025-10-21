@@ -127,7 +127,8 @@ def make_feature_list(feature_clauses: list) -> list[Feature]:
                                                             feature_name=once_field.name,
                                                         )
                                                     )
-                                                ]
+                                                ],
+                                                elseif_branches=[],
                                             )
                                         ]
 
@@ -149,7 +150,8 @@ def make_feature_list(feature_clauses: list) -> list[Feature]:
                                                     feature_name=once_field.name,
                                                 ),
                                                 then_branch=method.do,
-                                                else_branch=[]
+                                                else_branch=[],
+                                                elseif_branches=[],
                                             )
                                         ]
 

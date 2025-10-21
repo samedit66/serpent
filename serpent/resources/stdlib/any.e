@@ -65,22 +65,14 @@ feature
         not is_same (other)
     end
 
-feature {NONE}
--- Стандартный поток ввода/вывода.
-    cached_io: IO
-
 feature
 -- Функции для работы со стандартным потоком ввода/вывода.
 -- Определены для совместимости со стандартной реализацией EiffelStudio.
 
     io: IO
     -- Возвращает стандартный поток ввода/вывода.
-    do
-        if is_void (cached_io) then
-            create cached_io
-        end
-
-        Result := cached_io
+    once
+        Result := create {IO}
     end
 
     print (object: ANY)

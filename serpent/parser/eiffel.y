@@ -499,6 +499,9 @@ create_stmt: CREATE constructor_call                      { $$ = mk_create(NULL,
 
 constructor_call: IDENT_LIT                  { $$ = mk_constructor_call($1, NULL); }
                 | IDENT_LIT '.' simple_call  { $$ = mk_constructor_call($1, $3); }
+                // TODO: надо все переводить на writable
+                // | writable
+                // | writable '.' simple_call 
                 ;
 
 
