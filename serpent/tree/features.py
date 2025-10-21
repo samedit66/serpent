@@ -3,9 +3,9 @@ from abc import ABC
 from dataclasses import dataclass, field
 
 from .abstract_node import *
-from .type_decl import TypeDecl, make_type_decl
-from .stmts import Statement, Assignment, make_stmt
-from .expr import Expr, ResultConst, make_expr
+from .type_decl import TypeDecl, ClassType, make_type_decl
+from .stmts import Statement, Assignment, IfStmt, make_stmt
+from .expr import Expr, ResultConst, FeatureCall, make_expr
 
 
 @dataclass(match_args=True, kw_only=True)
@@ -54,6 +54,7 @@ class BaseMethod(Feature, ABC):
 @dataclass(match_args=True, kw_only=True)
 class Method(BaseMethod):
     is_deferred: bool
+    is_once: bool
     do: list[Statement] = field(default_factory=list)
     local_var_decls: list[LocalVarDecl] = field(default_factory=list)
 
@@ -84,8 +85,77 @@ def make_feature_list(feature_clauses: list) -> list[Feature]:
                     case "class_routine":
                         match feature_dict["body"]["type"]:
                             case "routine_body":
-                                features.append(make_method(
-                                    clients, feature_dict))
+                                method = make_method(clients, feature_dict)
+
+                                if method.is_once:
+                                    if isinstance(method.return_type, ClassType) and method.return_type.name != "<VOID>":
+                                        once_field = Field(
+                                            location=None,
+                                            name=f"${method.name}",
+                                            clients=method.clients,
+                                            value_type=method.return_type,
+                                        )
+                                        features.append(once_field)
+
+                                        once_do = [
+                                            IfStmt(
+                                                location=None,
+                                                condition=FeatureCall(
+                                                    location=None,
+                                                    feature_name="is_void",
+                                                    arguments=[
+                                                        FeatureCall(
+                                                            location=None,
+                                                            feature_name=once_field.name,
+                                                        )
+                                                    ]
+                                                ),
+                                                then_branch=[
+                                                    *method.do,
+                                                    Assignment(
+                                                        location=None,
+                                                        target=once_field.name,
+                                                        value=ResultConst(location=None),
+                                                    )
+                                                ],
+                                                else_branch=[
+                                                    Assignment(
+                                                        location=None,
+                                                        target=ResultConst(location=None),
+                                                        value=FeatureCall(
+                                                            location=None,
+                                                            feature_name=once_field.name,
+                                                        )
+                                                    )
+                                                ]
+                                            )
+                                        ]
+
+                                        method.do = once_do
+                                    elif isinstance(method.return_type, ClassType) and method.return_type.name == "<VOID>":
+                                        once_field = Field(
+                                            location=None,
+                                            name=f"${method.name}",
+                                            clients=method.clients,
+                                            value_type=ClassType(location=None, name="BOOLEAN"),
+                                        )
+                                        features.append(once_field)
+
+                                        once_do = [
+                                            IfStmt(
+                                                location=None,
+                                                condition=FeatureCall(
+                                                    location=None,
+                                                    feature_name=once_field.name,
+                                                ),
+                                                then_branch=method.do,
+                                                else_branch=[]
+                                            )
+                                        ]
+
+                                        method.do = once_do
+
+                                features.append(method)
                             case "external_routine_body":
                                 features.append(
                                     make_external_method(
@@ -190,11 +260,13 @@ def make_do(method_dict: dict) -> list[Statement]:
 
 def make_method(clients: list[str], method_dict: dict) -> Method:
     is_deferred = method_dict["body"]["routine_type"] == "deferred"
+    is_once = method_dict["body"]["routine_type"] == "once"
     return Method(
         location=Location(**method_dict["location"]),
         name=method_dict["name_and_type"]["name"],
         clients=clients,
         is_deferred=is_deferred,
+        is_once=is_once,
         return_type=make_type_decl(method_dict["name_and_type"]["field_type"]),
         parameters=make_parameters(method_dict["params"]),
         do=make_do(method_dict),

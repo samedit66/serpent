@@ -101,6 +101,7 @@ def make_class_decl(class_decl_dict: dict) -> ClassDecl:
                     name="default_create",
                     clients=["ANY"],
                     is_deferred=False,
+                    is_once=False,
                     return_type=ClassType(location=None, name="<VOID>"),
                     do=[],
                     local_var_decls=[])

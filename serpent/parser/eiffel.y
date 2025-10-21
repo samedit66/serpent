@@ -409,6 +409,7 @@ routine_body: require_part_opt do_part then_part_opt ensure_part_opt END { $$ = 
             | require_part_opt DEFERRED ensure_part_opt END { $$ = mk_deferred_routine_body($1, $3); }
             | require_part_opt EXTERNAL STRING_CONST ALIAS STRING_CONST ensure_part_opt END { $$ = mk_external_routine_body($3, $5, $1, $6); }
             | local_part require_part_opt once_part then_part_opt ensure_part_opt END { $$ = mk_once_routine_body($1, $2, $3, $4, $5); }
+            | require_part_opt once_part then_part_opt ensure_part_opt END { $$ = mk_once_routine_body(NULL, $1, $2, $3, $4); }
             ;
 
 once_part: ONCE stmt_list_opt { $$ = $2; }
