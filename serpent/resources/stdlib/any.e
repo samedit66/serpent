@@ -47,22 +47,10 @@ feature
         alias "com.eiffel.PLATFORM.ANY_is_void"
     end
 
-    is_not_void (other: ANY): BOOLEAN
-    -- Не является ли объект `other` `Void`?
-    then
-        not is_void (other)
-    end
-
     is_same (other: like Current): BOOLEAN
     -- Возвращает `True`, если объекты идентичны, и `False` в противном случае.
         external "Java"
         alias "com.eiffel.PLATFORM.ANY_is_same"
-    end
-
-    is_not_same (other: like Current): BOOLEAN
-    -- Возвращает `True`, если объекты не идентичны, и `False` в противном случае.
-    then
-        not is_same (other)
     end
 
 feature
