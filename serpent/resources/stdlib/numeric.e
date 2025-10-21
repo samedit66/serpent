@@ -35,5 +35,10 @@ feature
         -- Унарный минус. Псевдоним для "-".
         deferred
     end
-    
+
+    abs: like Current
+        -- Модуль числа.
+        deferred
+    end
+
 end

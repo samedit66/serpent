@@ -6,6 +6,7 @@ inherit
     ANY redefine out, is_equal end
     COMPARABLE redefine out end
     NUMERIC redefine out, is_equal end
+    HASHABLE redefine out, is_equal end
 
 feature
 -- Арифметические действия.
@@ -87,6 +88,23 @@ feature
     -- Конвертирует в символ.
         external "Java"
         alias "com.eiffel.PLATFORM.INTEGER_to_character"
+    end
+
+    abs: INTEGER
+    -- Модуль числа.
+    once
+        Result := Current
+        if Current < 0 then
+            Result := -Current
+        end
+    end
+
+feature
+-- Хэш-код.
+
+    hash_code: INTEGER
+    then
+        abs
     end
 
 end

@@ -52,6 +52,15 @@ feature
         alias "com.eiffel.PLATFORM.REAL_is_equal"
     end
 
+    abs: REAL
+    -- Модуль числа.
+    once
+        Result := Current
+        if Current < 0 then
+            Result := -Current
+        end
+    end
+
 feature
 -- Конвертация в другие типы.
 
