@@ -1,6 +1,8 @@
-# serpent
+[Русская версия](#russian-version) | [English version](#english-version)
 
 ![serpent](https://github.com/user-attachments/assets/f0c4bc96-cb53-44d0-94cf-329d10001765)
+
+# Russian version
 
 **serpent** — это компилятор подмножества языка программирования **Eiffel**, который позволяет компилировать код в Java-байткод и выполнять его на JVM.
 
@@ -196,6 +198,218 @@ serpent jar [classpath]
 **Запуск JAR-файлов:**
 
 Генерируемые class-файлы не могут быть запущены без указания флага `-noverify`, т.к. `serpent` не генерирует stack map frames.
+
+```bash
+java -noverify -jar app.jar
+```
+
+---
+
+# English version
+
+**serpent** — is a compiler for a subset of the **Eiffel** programming language that compiles code to Java bytecode and runs it on the JVM.
+
+## Key features
+
+- **Java integration:**
+  Easily call and use arbitrary Java code to extend your applications. 🔌☕
+
+- **Powerful inheritance:**
+  Supports both single and multiple inheritance for flexible class hierarchies and code reuse. 🏛️✨
+
+- **Built-in collections:**
+  The standard library contains implementations of a dynamic array and a hash table — simple, clear and efficient for working with data. 📊✅
+
+- **Simple and intuitive syntax:**
+  Define classes, methods and control structures easily and clearly, focusing on the application logic. 📝👌
+
+- **Rich set of built-in tools:**
+  Built-in I/O, sorting, searching, a web server and much more to get you started quickly. 🔍💡
+
+## Installation
+
+The compiler consists of two parts — a parser written in **C** which is built using **gcc**, **flex** and **bison** (on Windows it is recommended to use [MSYS2](https://www.msys2.org/) to install the required tools) and a semantic analyzer with a code generator written in **Python**.
+
+Next, install **serpent** as a Python package with `pip`:
+
+```bash
+git clone https://github.com/samedit66/serpent.git
+cd serpent
+pip install .
+```
+
+After installation the `serpent` command becomes available in the terminal.
+
+## Usage
+
+### 1️⃣ Initialize a new project
+Creates a minimal project with the file `app.e`:
+
+```bash
+serpent init
+cd app
+```
+
+After running the command, the folder `app` will contain `app.e`:
+
+```eiffel
+class
+    APPLICATION
+
+create
+    make
+
+feature
+
+    make
+    do
+        print ("Hello, world!%N")
+    end
+
+end
+```
+
+### 2️⃣ Build the project
+Compile the code from the current `app` folder:
+
+```bash
+serpent build
+```
+
+After that, compiled `.class` files will appear in the `classes/` directory.
+
+### 3️⃣ Run the program
+Run the compiled bytecode:
+
+```bash
+serpent run
+Hello, Eiffel!
+```
+
+### 4️⃣ Create an executable JAR
+Create an executable `.jar`:
+
+```bash
+serpent jar
+```
+
+The file `app.jar` will be saved to the current folder. Run it with:
+
+```bash
+java -noverify -jar app.jar
+```
+
+The compiler does not generate stack map frames, so bytecode verification must be disabled with `-noverify`.
+
+## Command reference
+
+### 1. Initialize a project
+Creates a minimal Eiffel project.
+
+**Command:**
+
+```bash
+serpent init [name]
+```
+
+**Parameters:**
+
+- `name` — Project name. If omitted, the default is `app`.
+
+---
+
+### 2. Build the project
+Compiles the Eiffel project.
+
+**Command:**
+
+```bash
+serpent build [source]
+```
+
+**Parameters:**
+
+- `source` — Directory with the project's source files. Default: current directory (`.`).
+
+**Flags:**
+
+- `--mainclass (-m)` — Main class. Default: `APPLICATION`.
+- `--mainroutine (-r)` — Main (entry) routine. Default: `make`.
+- `--javaversion (-j)` — Java version. Default: `11`.
+- `--outputdir (-d)` — Output directory for generated `.class` files. Default: `classes`.
+- `--no-verbose` — Disables the compilation progress bar.
+
+---
+
+### 3. Run compiled classes
+Runs compiled classes of the project.
+
+**Command:**
+
+```bash
+serpent run [classpath]
+```
+
+**Parameters:**
+
+- `[classpath]` — Directory with class files. Default: `classes`.
+
+**Flags:**
+
+- `--mainclass (-m)` — Main class. Default: `APPLICATION`.
+
+---
+
+### 4. Build and run (shortcut)
+Compiles the project and then runs the compiled files. Equivalent to:
+
+```bash
+serpent build
+serpent run
+```
+
+**Command:**
+
+```bash
+serpent exec [source]
+```
+
+**Parameters:**
+
+- `source` — Directory with the project's source files. Default: current directory (`.`).
+
+**Flags:**
+
+- `--mainclass (-m)` — Main class. Default: `APPLICATION`.
+- `--mainroutine (-r)` — Main routine. Default: `make`.
+- `--javaversion (-j)` — Java version. Default: `11`.
+- `--outputdir (-d)` — Output directory for generated `.class` files. Default: `classes`.
+- `--no-verbose` — Disables the compilation progress bar.
+
+---
+
+### 5. Create a JAR file
+Creates a JAR file from compiled classes.
+
+**Command:**
+
+```bash
+serpent jar [classpath]
+```
+
+**Parameters:**
+
+- `[classpath]` — Directory with class files. Default: `classes`.
+
+**Flags:**
+
+- `--mainclass (-m)` — Main class. Default: `APPLICATION`.
+- `--outputdir (-d)` — Directory to save the JAR file. Default: current directory (`.`).
+- `--jarname (-n)` — Name of the generated JAR. Default: `app.jar`.
+
+**Running JAR files:**
+
+Generated class files cannot be run without the `-noverify` flag because `serpent` does not generate stack map frames.
 
 ```bash
 java -noverify -jar app.jar
