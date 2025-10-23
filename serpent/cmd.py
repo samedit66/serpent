@@ -56,9 +56,9 @@ def main() -> None:
     build_parser.add_argument("source", nargs="?", default=".", help="Source folder (default: current directory).")
     build_parser.add_argument("-m", "--mainclass", default="APPLICATION", help="Main class (default: APPLICATION).")
     build_parser.add_argument("-r", "--mainroutine", default="make", help="Main method (default: make).")
-    build_parser.add_argument("-j", "--javaversion", type=int, default=8, help="Java version (default: 8).")
+    build_parser.add_argument("-j", "--javaversion", type=int, default=11, help="Java version (default: 11).")
     build_parser.add_argument("-d", "--outputdir", default="classes", help="Build folder (default: classes).")
-    build_parser.add_argument("-v", "--verbose", action="store_true", help="Show a progress bar of class compiling.")
+    build_parser.add_argument("--no-verbose", action="store_false", help="Hide a progress bar of class compiling.")
 
     # `run` command
     run_parser = subparsers.add_parser("run", help="Run compiled class files.")
@@ -78,9 +78,9 @@ def main() -> None:
     exec_parser.add_argument("-s", "--source", default=".", help="Source folder (default: current directory).")
     exec_parser.add_argument("-m", "--mainclass", default="APPLICATION", help="Main class (default: APPLICATION).")
     exec_parser.add_argument("-r", "--mainroutine", default="make", help="Main method (default: make).")
-    exec_parser.add_argument("-j", "--javaversion", type=int, default=8, help="Java version (default: 8).")
+    exec_parser.add_argument("-j", "--javaversion", type=int, default=11, help="Java version (default: 11).")
     exec_parser.add_argument("-d", "--outputdir", default="classes", help="Build folder (default: classes).")
-    exec_parser.add_argument("-v", "--verbose", action="store_true", help="Show a progress bar of class compiling.")
+    exec_parser.add_argument("--no-verbose", action="store_false", help="Hide a progress bar of class compiling.")
 
     # `jar` command
     jar_parser = subparsers.add_parser("jar", help="Create a JAR file.")
@@ -109,7 +109,7 @@ def main() -> None:
             main_class_name=args.mainclass,
             main_routine_name=args.mainroutine,
             eiffel_package="com.eiffel",
-            verbose=args.verbose,
+            verbose=args.no_verbose,
         )
     elif args.command == "run":
         run(
@@ -130,7 +130,7 @@ def main() -> None:
             main_class_name=args.mainclass,
             main_routine_name=args.mainroutine,
             eiffel_package="com.eiffel",
-            verbose=args.verbose,
+            verbose=args.no_verbose,
         )
         if not error_collector.ok():
             error_collector.show()
@@ -141,6 +141,7 @@ def main() -> None:
             error_collector,
             args.mainclass,
             eiffel_package="com.eiffel",
+            cmd_args=unknown,
         )
     elif args.command == "jar":
         make_jar(
