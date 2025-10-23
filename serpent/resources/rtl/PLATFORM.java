@@ -545,4 +545,20 @@ public class PLATFORM {
             return 1;
         }
     }
+
+    public static float MATH_MIXIN_sin(PLATFORM self) {
+        float value = self.value_type == REAL_TYPE ? self.raw_float : self.raw_int;
+        return (float) Math.sin(value);
+    }
+
+    public static float MATH_MIXIN_cos(PLATFORM self) {
+        float value = self.value_type == REAL_TYPE ? self.raw_float : self.raw_int;
+        return (float) Math.cos(value);
+    }
+
+    public static float MATH_MIXIN_power(PLATFORM self, PLATFORM power) {
+        float value = self.value_type == REAL_TYPE ? self.raw_float : self.raw_int;
+        float p = power.value_type == REAL_TYPE ? self.raw_float : self.raw_int;
+        return (float) Math.pow(value, p);
+    }
 }

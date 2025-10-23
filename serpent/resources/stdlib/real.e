@@ -5,6 +5,7 @@ inherit
     ANY redefine out, is_equal end
     COMPARABLE redefine out end
     NUMERIC redefine out, is_equal end
+    MATH_MIXIN redefine out end
 
 feature
 -- Арифметические действия.
@@ -39,6 +40,16 @@ feature
         alias "com.eiffel.PLATFORM.REAL_opposite"
     end
 
+    one: like Current
+    then
+        1.0
+    end
+
+    zero: like Current
+    then
+        0.0
+    end
+
 feature
 -- Операции сравнения.
 
@@ -52,15 +63,6 @@ feature
         alias "com.eiffel.PLATFORM.REAL_is_equal"
     end
 
-    abs: REAL
-    -- Модуль числа.
-    once
-        Result := Current
-        if Current < 0 then
-            Result := -Current
-        end
-    end
-
 feature
 -- Конвертация в другие типы.
 
@@ -69,4 +71,5 @@ feature
         external "Java"
         alias "com.eiffel.PLATFORM.REAL_to_string"
     end
+
 end

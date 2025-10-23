@@ -36,9 +36,12 @@ feature
         deferred
     end
 
-    abs: like Current
-        -- Модуль числа.
-        deferred
+    one: like Current
+    deferred
+    end
+
+    zero: like Current
+    deferred
     end
 
 end
