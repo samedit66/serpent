@@ -9,6 +9,13 @@ import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.io.OutputStream;
+import java.lang.reflect.Method;
+import java.lang.reflect.Constructor;
+import java.net.InetSocketAddress;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
 
 /**
  * Класс PLATFORM представляет универсальное значение для системы Eiffel.
@@ -560,5 +567,156 @@ public class PLATFORM {
         float value = self.value_type == REAL_TYPE ? self.raw_float : self.raw_int;
         float p = power.value_type == REAL_TYPE ? self.raw_float : self.raw_int;
         return (float) Math.pow(value, p);
+    }
+
+    /* **************************************************************************** */
+    /* Веб-сервер */
+    private static HttpServer server = null;
+
+    // startServer(port, contextPath, handlerClassName) kept for compatibility; contextPath is ignored and "/" is used.
+    public static int startServer(PLATFORM self, int port, String contextPath) {
+        try {
+            if (server != null) return 0;
+            server = HttpServer.create(new InetSocketAddress(port), 0);
+            server.createContext("/", new HttpHandler() {
+                @Override
+                public void handle(HttpExchange exchange) {
+                    handleIncomingExchange(exchange);
+                }
+            });
+            server.setExecutor(null);
+            server.start();
+            return 1;
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+            return 0;
+        }
+    }
+
+    public static int stopServer(PLATFORM self) {
+        try {
+            if (server == null) return 0;
+            server.stop(0);
+            server = null;
+            return 1;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private static Object delegate = null;
+
+    public static void setDelegate(PLATFORM self, PLATFORM del) {
+        delegate = del;
+    }
+
+    public static void clearDelegate(PLATFORM self) {
+        delegate = null;
+    }
+
+    /**
+     * Handle incoming HttpExchange: call a method on the delegate that accepts a single String (the path).
+     * It searches for any public method with exactly one parameter of type java.lang.String and invokes it.
+     */
+    public static void handleIncomingExchange(HttpExchange t) {
+        try {
+            String path = t.getRequestURI().toString(); // includes path + query if present
+            String response = "No response";
+
+            if (delegate != null) {
+                try {
+                    Method chosen = null;
+                    Class<?> chosenParam = null;
+
+                    // try to load com.eiffel.STRING once (may not exist in some environments)
+                    Class<?> eiffelStringClass = null;
+                    try {
+                        eiffelStringClass = Class.forName("com.eiffel.STRING");
+                    } catch (ClassNotFoundException ignored) {
+                        // runtime may be missing or class name different; we'll handle gracefully
+                    }
+
+                    // 1) find candidate methods with exactly one parameter
+                    for (Method m : delegate.getClass().getMethods()) {
+                        if (m.getParameterCount() != 1) continue;
+                        Class<?> p = m.getParameterTypes()[0];
+
+                        // prefer exact "get" or "_get" style name
+                        if ("get".equals(m.getName()) || m.getName().endsWith("_get")) {
+                            chosen = m;
+                            chosenParam = p;
+                            break;
+                        }
+
+                        // otherwise pick first single-arg method as fallback (if none preferred)
+                        if (chosen == null) {
+                            chosen = m;
+                            chosenParam = p;
+                        }
+                    }
+
+                    if (chosen != null) {
+                        Object arg;
+                        // If method expects a plain Java String, pass it directly.
+                        if (chosenParam.equals(String.class)) {
+                            arg = path;
+                        }
+                        // If method expects com.eiffel.STRING (or something assignable from it),
+                        // construct new com.eiffel.STRING(path) via reflection.
+                        else if (eiffelStringClass != null && chosenParam.isAssignableFrom(eiffelStringClass)) {
+                            try {
+                                Constructor<?> ctor = chosenParam.getConstructor(String.class);
+                                arg = ctor.newInstance(path);
+                            } catch (NoSuchMethodException nsme) {
+                                // If constructor not found, try to instantiate using the specific com.eiffel.STRING class
+                                // (fallback) — attempt to construct com.eiffel.STRING directly
+                                try {
+                                    Constructor<?> ctor2 = eiffelStringClass.getConstructor(String.class);
+                                    arg = ctor2.newInstance(path);
+                                    // if chosenParam is a supertype, this should still be acceptable at invoke time
+                                } catch (Exception e) {
+                                    throw new RuntimeException("Cannot construct com.eiffel.STRING(String) required by handler", e);
+                                }
+                            }
+                        }
+                        // If parameter is other type that can accept a java.lang.String (e.g. Object),
+                        // pass the java String (best effort).
+                        else if (chosenParam.isAssignableFrom(String.class) || chosenParam.equals(Object.class)) {
+                            arg = path;
+                        } else {
+                            // Not compatible; fail early with helpful message
+                            throw new IllegalArgumentException("Handler parameter type " + chosenParam.getName() +
+                                    " is not supported. Expected java.lang.String or com.eiffel.STRING.");
+                        }
+
+                        // invoke and extract response
+                        PLATFORM r = (PLATFORM) chosen.invoke(delegate, arg);
+                        if (r != null) response = r.raw_string;
+                    } else {
+                        response = "No compatible handler method found on Eiffel delegate";
+                    }
+                } catch (Exception e) {
+                    response = "Handler invocation failed: " + e.toString();
+                    e.printStackTrace(System.err);
+                }
+            } else {
+                response = "No Eiffel delegate registered";
+            }
+
+            byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+            t.getResponseHeaders().add("Content-Type", "text/html; charset=utf-8");
+            t.sendResponseHeaders(200, bytes.length);
+            try (OutputStream os = t.getResponseBody()) {
+                os.write(bytes);
+            }
+        } catch (IOException ioe) {
+            try {
+                byte[] msg = ("Internal Server Error: " + ioe.getMessage()).getBytes(StandardCharsets.UTF_8);
+                t.sendResponseHeaders(500, msg.length);
+                try (OutputStream os = t.getResponseBody()) {
+                    os.write(msg);
+                }
+            } catch (Exception ignored) {}
+        }
     }
 }

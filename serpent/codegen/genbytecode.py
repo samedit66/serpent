@@ -47,10 +47,26 @@ def generate_bytecode_for_integer_const(
         desc="(I)V",
         fq_class_name=fq_class_name)
 
+    value = const.value
+    
+    # sanity: ensure value fits in Java int
+    if not (-2**31 <= value <= 2**31 - 1):
+        raise ValueError(f"Integer constant out of Java int range: {value}")
+
+    # choose smallest instruction that can encode the integer literal
+    if -128 <= value <= 127:
+        int_push = Bipush(value)
+    elif -32768 <= value <= 32767:
+        int_push = Sipush(value)
+    else:
+        # put integer into constant pool and use ldc / ldc_w
+        idx = pool.add_integer(value)
+        int_push = Ldc(idx) if idx < 256 else Ldc_w(idx)
+
     bytecode = [
         New(class_index),
         Dup(),
-        Bipush(const.value),
+        int_push,
         InvokeSpecial(methodref_index)
     ]
 
